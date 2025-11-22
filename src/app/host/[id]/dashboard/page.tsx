@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { ClueControl } from '@/components/clue-control'
+import { Toaster } from 'sonner'
+import { NotificationListener } from '@/components/NotificationListener'
+import { PhaseControl } from '@/components/PhaseControl'
+import { ShareLink } from '@/components/ShareLink'
 
 export default async function HostDashboard({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -23,6 +27,9 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 pb-20">
+            <Toaster />
+            <NotificationListener partyId={id} />
+
             <header className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-purple-400">Host Dashboard</h1>
@@ -89,12 +96,6 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                     ))}
                                 </>
                             )}
-                        </div>
-
-                        <div className="mt-6 p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800">
-                            <p className="text-sm text-slate-400 mb-2">Share this Party ID with guests:</p>
-                            <code className="bg-slate-900 px-3 py-2 rounded text-purple-400 font-mono select-all block text-center">{id}</code>
-                            <p className="text-xs text-slate-500 mt-2">Guests will use their PIN to log in and see their role.</p>
                         </div>
                     </div>
 
@@ -208,8 +209,8 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase ${clue.timing === 'pre-dinner'
-                                                        ? 'bg-blue-900/30 text-blue-400'
-                                                        : 'bg-orange-900/30 text-orange-400'
+                                                    ? 'bg-blue-900/30 text-blue-400'
+                                                    : 'bg-orange-900/30 text-orange-400'
                                                     }`}>
                                                     {clue.timing === 'pre-dinner' ? 'Pre-Dinner' : 'Post-Murder'}
                                                 </span>
@@ -227,16 +228,30 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                     )}
 
                     {/* Game Controls */}
-                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                        <h2 className="text-xl font-semibold mb-4 text-purple-400">Game Master Controls</h2>
-                        <form action={async (formData) => {
-                            'use server'
-                            const { sendClue } = await import('@/app/actions')
-                            await sendClue(formData)
-                        }}>
-                            <input type="hidden" name="partyId" value={id} />
-                            <ClueControl partyId={id} guests={guests || []} />
-                        </form>
+                    <div className="space-y-6">
+                        {/* Phase Triggers */}
+                        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
+                            <h2 className="text-xl font-semibold mb-4 text-white flex items-center gap-2">
+                                <span>📢</span> Game Phase Controls
+                            </h2>
+                            <PhaseControl
+                                partyId={id}
+                                victimName={(party.victim as any)?.name || 'The Victim'}
+                            />
+                        </div>
+
+                        {/* Clue Sending */}
+                        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
+                            <h2 className="text-xl font-semibold mb-4 text-purple-400">Send Clues</h2>
+                            <form action={async (formData) => {
+                                'use server'
+                                const { sendClue } = await import('@/app/actions')
+                                await sendClue(formData)
+                            }}>
+                                <input type="hidden" name="partyId" value={id} />
+                                <ClueControl partyId={id} guests={guests || []} />
+                            </form>
+                        </div>
                     </div>
 
                     {/* Clue History */}

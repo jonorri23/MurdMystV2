@@ -2,8 +2,9 @@
 
 import { EditableCharacter } from '@/components/EditableCharacter'
 import { EditableClue } from '@/components/EditableClue'
-import { adjustStory } from '@/app/actions'
+import { adjustStory, regenerateAllPortraits } from '@/app/actions'
 import { useState } from 'react'
+import { WinningPath } from '@/components/WinningPath'
 
 export function ReviewContent({
     party,
@@ -44,7 +45,8 @@ export function ReviewContent({
         if (!adjustmentPrompt.trim()) return
         setIsAdjusting(true)
         try {
-            await adjustStory(party.id, adjustmentPrompt)
+            // Pass the current analysis result as context if available
+            await adjustStory(party.id, adjustmentPrompt, storyCheckResult || undefined)
             setAdjustmentPrompt('')
             onRefresh()
             setStoryCheckResult('Story updated successfully! Run a new check to verify.')
@@ -55,10 +57,30 @@ export function ReviewContent({
         setIsAdjusting(false)
     }
 
+    const handleRegeneratePortraits = async () => {
+        if (!confirm('Regenerate ALL character portraits? This may take a minute.')) return
+        setIsAdjusting(true)
+        try {
+            // Call the server action
+            await regenerateAllPortraits(party.id)
+
+            onRefresh()
+            alert('Portraits regeneration started! Images will appear as they complete.')
+        } catch (error) {
+            console.error('Portrait gen failed', error)
+            alert('Failed to regenerate portraits')
+        }
+        setIsAdjusting(false)
+    }
+
     return (
         <div className="space-y-8">
+            {/* Winning Path Graph */}
+            <WinningPath />
+
             {/* AI Story Assistant */}
             <div className="bg-gradient-to-r from-blue-900/30 to-slate-900/30 border border-blue-800/50 rounded-xl p-6">
+                {/* ... existing AI Assistant code ... */}
                 <div className="flex items-center gap-2 mb-4">
                     <span className="text-2xl">🤖</span>
                     <h2 className="text-xl font-bold text-blue-400">AI Story Assistant</h2>
@@ -170,7 +192,16 @@ export function ReviewContent({
 
             {/* Character Roles - Editable */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h2 className="text-2xl font-bold text-purple-400 mb-6">Character Roles (Editable)</h2>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-purple-400">Character Roles (Editable)</h2>
+                    <button
+                        onClick={handleRegeneratePortraits}
+                        disabled={isAdjusting}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-medium border border-slate-700"
+                    >
+                        🔄 Regenerate All Portraits
+                    </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {characters.map((char: any) => (
                         <EditableCharacter

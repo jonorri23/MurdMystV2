@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
+import { Toaster } from 'sonner'
+import { NotificationListener } from '@/components/NotificationListener'
 
 export default async function GuestDashboard({ params }: { params: Promise<{ id: string; guestId: string }> }) {
     const { id, guestId } = await params;
@@ -51,7 +53,11 @@ export default async function GuestDashboard({ params }: { params: Promise<{ id:
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 p-6 pb-20">
+            <Toaster />
+            <NotificationListener partyId={id} guestId={guestId} />
+
             <header className="flex justify-between items-center mb-8">
+                {/* ... existing header ... */}
                 <div>
                     <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                         {party.name}

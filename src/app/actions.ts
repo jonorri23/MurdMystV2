@@ -552,7 +552,68 @@ export async function regenerateCharacter(characterId: string, prompt: string) {
     revalidatePath('/host/[id]/review', 'page')
 }
 
-export async function adjustStory(partyId: string, instruction: string) {
+export async function regenerateClue(partyId: string, clueIndex: number, prompt: string) {
+    'use server'
+
+    // 1. Fetch current party
+    const { data: party, error: fetchError } = await supabase
+        .from('parties')
+        .select('physical_clues, story_theme, victim')
+        .eq('id', partyId)
+        .single()
+
+    if (fetchError || !party) {
+        throw new Error('Failed to fetch party')
+    }
+
+    const currentClues = (party.physical_clues as any[]) || []
+    const targetClue = currentClues[clueIndex]
+
+    if (!targetClue) throw new Error('Clue not found')
+
+    // 2. Call AI
+    const { generateObject } = await import('ai')
+    const { openai } = await import('@ai-sdk/openai')
+    const { z } = await import('zod')
+
+    const schema = z.object({
+        description: z.string(),
+        setupInstruction: z.string(),
+        content: z.string(),
+        timing: z.enum(['pre-dinner', 'post-murder']),
+        relatedTo: z.array(z.string())
+    })
+
+    const systemPrompt = `You are an expert murder mystery writer.
+    Rewrite this physical clue based on the user's instruction.
+    
+    Theme: ${party.story_theme}
+    Victim: ${JSON.stringify(party.victim)}
+    Current Clue: ${JSON.stringify(targetClue)}
+    
+    User Instruction: "${prompt}"
+    
+    Return the updated clue object.`
+
+    const { object } = await generateObject({
+        model: openai('gpt-4o'),
+        schema,
+        prompt: systemPrompt,
+    })
+
+    // 3. Update DB
+    currentClues[clueIndex] = object
+
+    await supabase
+        .from('parties')
+        .update({ physical_clues: currentClues })
+        .eq('id', partyId)
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/review`, 'page')
+}
+
+export async function adjustStory(partyId: string, instruction: string, analysisContext?: string) {
     'use server'
 
     // 1. Fetch current party state
@@ -607,6 +668,11 @@ export async function adjustStory(partyId: string, instruction: string) {
         }))
     })
 
+    let fullPrompt = `USER INSTRUCTION: "${instruction}"`
+    if (analysisContext) {
+        fullPrompt += `\n\nCONTEXT FROM PREVIOUS ANALYSIS (Use this to guide your changes):\n${analysisContext}`
+    }
+
     const systemPrompt = `You are an expert murder mystery editor.
     Your task is to MODIFY the existing mystery based on the user's instruction.
     
@@ -618,7 +684,7 @@ export async function adjustStory(partyId: string, instruction: string) {
     Victim: ${JSON.stringify(party.victim)}
     Characters: ${JSON.stringify(characters?.map(c => ({ id: c.id, name: c.name, role: c.role })))}
     
-    USER INSTRUCTION: "${instruction}"
+    ${fullPrompt}
     
     Rewrite the necessary parts of the victim, characters, and clues to satisfy the instruction.
     Keep unchanged parts consistent.
@@ -655,6 +721,71 @@ export async function adjustStory(partyId: string, instruction: string) {
             })
             .eq('id', char.id)
     }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/review`, 'page')
+}
+
+export async function regenerateAllPortraits(partyId: string) {
+    'use server'
+
+    const { data: guests } = await supabase
+        .from('guests')
+        .select('id')
+        .eq('party_id', partyId)
+
+    if (!guests) return
+
+    const { data: characters } = await supabase
+        .from('characters')
+        .select('*')
+        .in('guest_id', guests.map(g => g.id))
+
+    if (!characters) return
+
+    const OpenAI = (await import('openai')).default
+    const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+    await Promise.all(characters.map(async (char) => {
+        try {
+            const response = await openaiClient.images.generate({
+                model: "dall-e-3",
+                prompt: `A digital painting of a murder mystery character: ${char.name}, ${char.role}. ${char.backstory.slice(0, 100)}... Style: Oil painting, mysterious, noir.`,
+                size: "1024x1024",
+                quality: "standard",
+                n: 1,
+                response_format: "b64_json"
+            })
+
+            if (!response.data) throw new Error('No image data received')
+            const imageBase64 = response.data[0].b64_json
+            if (!imageBase64) throw new Error('No image data')
+
+            // Upload to Supabase Storage
+            const fileName = `${partyId}/${char.id}-${Date.now()}.png`
+            const buffer = Buffer.from(imageBase64, 'base64')
+
+            const { error: uploadError } = await supabase.storage
+                .from('portraits')
+                .upload(fileName, buffer, {
+                    contentType: 'image/png',
+                    upsert: true
+                })
+
+            if (!uploadError) {
+                const { data: { publicUrl } } = supabase.storage
+                    .from('portraits')
+                    .getPublicUrl(fileName)
+
+                await supabase
+                    .from('characters')
+                    .update({ portrait_url: publicUrl })
+                    .eq('id', char.id)
+            }
+        } catch (e) {
+            console.error(`Failed to gen portrait for ${char.name}`, e)
+        }
+    }))
 
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/host/${partyId}/review`, 'page')
