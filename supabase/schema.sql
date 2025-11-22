@@ -34,7 +34,10 @@ create table characters (
   role text not null,
   backstory text not null,
   secret_objective text not null,
-  portrait_url text
+  portrait_url text,
+  relationships jsonb, -- Array of {character, relationship}
+  quirks jsonb, -- Array of behavioral quirks/props
+  opening_action text -- Specific action to do at start
 );
 
 -- Game Events Table
@@ -42,10 +45,11 @@ create table game_events (
   id uuid default uuid_generate_v4() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   party_id uuid references parties(id) on delete cascade not null,
-  trigger_time timestamp with time zone,
-  event_type text not null check (event_type in ('clue', 'announcement', 'secret')),
+  event_type text not null default 'clue',
   content text not null,
-  target_guest_ids uuid[] -- Array of guest IDs who receive this (null = all guests)
+  trigger_time timestamp with time zone,
+  target_guest_ids uuid[], -- null = all guests, otherwise specific guest IDs
+  metadata jsonb
 );
 
 -- Messages Table (In-game chat/secrets)
@@ -53,15 +57,23 @@ create table messages (
   id uuid default uuid_generate_v4() primary key,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   party_id uuid references parties(id) on delete cascade not null,
-  sender_character_id uuid references characters(id) on delete set null,
-  recipient_character_id uuid references characters(id) on delete set null,
-  content text not null
+  sender_type text not null check (sender_type in ('host', 'guest', 'system')),
+  sender_id text,
+  content text not null,
+  is_private boolean default false
 );
 
 -- Realtime subscriptions
 alter publication supabase_realtime add table parties;
 alter publication supabase_realtime add table game_events;
 alter publication supabase_realtime add table messages;
+
+-- SQL to add new columns to existing database:
+ALTER TABLE parties ADD COLUMN IF NOT EXISTS victim jsonb;
+ALTER TABLE parties ADD COLUMN IF NOT EXISTS physical_clues jsonb;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS relationships jsonb;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS quirks jsonb;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS opening_action text;
 
 -- Disable RLS on all tables (for MVP)
 ALTER TABLE parties DISABLE ROW LEVEL SECURITY;

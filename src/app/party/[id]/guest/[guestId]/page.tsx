@@ -83,27 +83,96 @@ export default async function GuestDashboard({ params }: { params: Promise<{ id:
                 ) : (
                     /* Character Card */
                     <div className="space-y-6">
+                        {/* How to Play Section */}
+                        <div className="bg-gradient-to-r from-purple-900/30 to-slate-900/30 border border-purple-800/50 rounded-xl p-6">
+                            <h2 className="text-lg font-bold text-purple-300 mb-3 flex items-center gap-2">
+                                <span>🎭</span> How to Play
+                            </h2>
+                            <div className="space-y-2 text-sm text-slate-300">
+                                <p>• <strong>Stay in character</strong> - Use your quirks and personality</p>
+                                <p>• <strong>Complete your opening action</strong> - This kicks off the mystery!</p>
+                                <p>• <strong>Interact with others</strong> - Ask questions, share info, form alliances</p>
+                                <p>• <strong>Use your relationships</strong> - They're key to the story</p>
+                                <p>• <strong>Watch for clues</strong> - Physical clues around the venue + in-app messages</p>
+                            </div>
+                        </div>
+
+                        {/* Character Card */}
                         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
                             <div className="bg-gradient-to-r from-purple-900/50 to-slate-900 p-6 border-b border-slate-800">
                                 <h2 className="text-2xl font-bold text-white">{character.name}</h2>
                                 <p className="text-purple-300 font-medium">{character.role}</p>
                             </div>
 
+                            {character.portrait_url && (
+                                <div className="p-6 border-b border-slate-800">
+                                    <img
+                                        src={character.portrait_url}
+                                        alt={character.name}
+                                        className="w-full max-w-sm mx-auto rounded-lg"
+                                    />
+                                </div>
+                            )}
+
                             <div className="p-6 space-y-6">
+                                {/* Opening Action - Highlighted */}
+                                {character.opening_action && (
+                                    <div className="bg-yellow-950/30 border-l-4 border-yellow-600 rounded-r-lg p-4">
+                                        <h3 className="text-sm font-semibold text-yellow-400 uppercase tracking-wide mb-2">
+                                            ⚡ Your Opening Action
+                                        </h3>
+                                        <p className="text-yellow-100 font-medium">{character.opening_action}</p>
+                                        <p className="text-xs text-yellow-600 mt-2">Do this to kickstart the mystery!</p>
+                                    </div>
+                                )}
+
+                                {/* Backstory */}
                                 <div>
-                                    <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-2">Your Backstory</h3>
-                                    <p className="text-slate-300 leading-relaxed text-sm">
-                                        {character.backstory}
-                                    </p>
+                                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                                        Your Story
+                                    </h3>
+                                    <p className="text-slate-300 leading-relaxed">{character.backstory}</p>
                                 </div>
 
-                                <div className="bg-red-950/30 p-4 rounded-lg border border-red-900/30">
-                                    <h3 className="text-sm font-medium text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                        Secret Objective
+                                {/* Relationships */}
+                                {character.relationships && (character.relationships as any[]).length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                                            🔗 Your Relationships
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {(character.relationships as any[]).map((rel: any, idx: number) => (
+                                                <div key={idx} className="bg-slate-950 rounded-lg p-3 border border-slate-800">
+                                                    <span className="text-purple-400 font-medium">{rel.character}</span>
+                                                    <p className="text-slate-300 text-sm mt-1">{rel.relationship}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Quirks & Props */}
+                                {character.quirks && (character.quirks as any[]).length > 0 && (
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">
+                                            ✨ Your Quirks & Props
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(character.quirks as any[]).map((quirk: string, idx: number) => (
+                                                <span key={idx} className="bg-purple-900/30 text-purple-300 px-3 py-1.5 rounded-full text-sm border border-purple-800/50">
+                                                    {quirk}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Secret Objective */}
+                                <div className="bg-red-950/20 border border-red-900/50 rounded-lg p-4">
+                                    <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wide mb-2">
+                                        🔒 Secret Objective
                                     </h3>
-                                    <p className="text-red-200 text-sm font-medium">
-                                        {character.secret_objective}
-                                    </p>
+                                    <p className="text-slate-300 leading-relaxed">{character.secret_objective}</p>
                                 </div>
                             </div>
                         </div>

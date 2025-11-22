@@ -146,55 +146,94 @@ export async function generateMystery(partyId: string) {
         throw new Error('Party or guests not found')
     }
 
+    // Define schema
+    const schema = z.object({
+        title: z.string().describe('The mystery title'),
+        intro: z.string().describe('The opening scene description'),
+        victim: z.object({
+            name: z.string(),
+            role: z.string(),
+            causeOfDeath: z.string(),
+            timeOfDeath: z.string(),
+            location: z.string(),
+            backstory: z.string()
+        }).describe('The murder victim - NOT a guest'),
+        characters: z.array(z.object({
+            guestName: z.string().describe('Real guest name'),
+            roleName: z.string().describe('Character name'),
+            roleDescription: z.string().describe('Character description'),
+            backstory: z.string(),
+            secret: z.string(),
+            objective: z.string(),
+            isMurderer: z.boolean(),
+            relationships: z.array(z.object({
+                character: z.string().describe('Role name of the other character'),
+                relationship: z.string().describe('Description of the relationship')
+            })).describe('Relationships to other characters'),
+            quirks: z.array(z.string()).describe('Behavioral quirks and props'),
+            openingAction: z.string().describe('A specific dramatic action to do at the start')
+        })),
+        physicalClues: z.array(z.object({
+            description: z.string().describe('What the clue is'),
+            setupInstruction: z.string().describe('Where and how to place it in the venue'),
+            content: z.string().describe('The actual text/appearance of the clue'),
+            timing: z.enum(['pre-dinner', 'post-murder']).describe('When it should be found'),
+            relatedTo: z.array(z.string()).describe('Character role names this clue relates to')
+        })).describe('Physical clues for the host to set up'),
+        clues: z.array(z.object({
+            content: z.string(),
+            suggestedTiming: z.string(),
+            targetRoles: z.array(z.string())
+        })).describe('In-app clues that appear during the game')
+    })
+
     // 2. Call AI
     const prompt = `
     Story/Theme: ${party.story_theme || party.name}
     Physical Venue: ${party.setting_description || 'A typical room'}
     Guests:
     ${guests.map(g => `- ${g.name} (${g.personality_notes || 'No notes'})`).join('\n')}
+Party Name: ${party.name}
+Theme: ${party.story_theme || 'murder mystery'}
+Physical Venue: ${party.setting_description || 'a house'}
+
+Guests (${guests.length}):
+${guests.map(g => `- ${g.name}${g.personality_notes ? ` (${g.personality_notes})` : ''}`).join('\n')}
+
+Generate a complete murder mystery with:
+- A victim and murder scenario
+- Character roles for ALL ${guests.length} guests (with relationships, quirks, opening actions)
+- Physical clue setup instructions for the host
+- In-app clues for during the game
+
+Make it dramatic, interactive, and perfectly tailored to this venue and theme!
   `
 
     const { object } = await generateObject({
         model: openai('gpt-4o'),
         system: SYSTEM_PROMPT,
         prompt: prompt,
-        schema: z.object({
-            title: z.string(),
-            intro: z.string(),
-            characters: z.array(z.object({
-                guestName: z.string(),
-                roleName: z.string(),
-                roleDescription: z.string(),
-                backstory: z.string(),
-                secret: z.string(),
-                objective: z.string(),
-                isMurderer: z.boolean(),
-            })),
-            clues: z.array(z.object({
-                content: z.string(),
-                suggestedTiming: z.string(),
-                targetRoles: z.array(z.string()),
-            })),
-        }),
+        schema: schema,
     })
 
     // 3. Save to Database
     // Update Party to reviewing status (not active yet!)
+    // Update Party status to 'reviewing' and save victim info and physical clues
     await supabase
         .from('parties')
         .update({
-            name: object.title,
-            setting_description: object.intro,
-            status: 'reviewing' // New status for review phase
+            status: 'reviewing',
+            victim: object.victim,
+            physical_clues: object.physicalClues
         })
         .eq('id', partyId)
 
     // Create Characters and Generate Portraits
     console.log('=== MATCHING GUESTS TO CHARACTERS ===');
     console.log('Available guests:', guests.map(g => ({ id: g.id, name: g.name })));
-    console.log('AI generated characters for:', object.characters.map(c => c.guestName));
+    console.log('AI generated characters for:', object.characters.map((c: any) => c.guestName));
 
-    const characterInserts = await Promise.all(object.characters.map(async (char, index) => {
+    const characterInserts = await Promise.all(object.characters.map(async (char: any, index: number) => {
         // Try exact match first, then case-insensitive, then fuzzy match by index
         let guest = guests.find(g => g.name === char.guestName);
 
@@ -245,7 +284,10 @@ export async function generateMystery(partyId: string) {
             role: char.roleDescription,
             backstory: char.backstory,
             secret_objective: char.objective + (char.isMurderer ? " YOU ARE THE MURDERER." : ""),
-            portrait_url: portraitUrl
+            portrait_url: portraitUrl,
+            relationships: char.relationships || [],
+            quirks: char.quirks || [],
+            opening_action: char.openingAction || null
         }
     }))
 
