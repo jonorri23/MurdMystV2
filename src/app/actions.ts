@@ -326,3 +326,21 @@ export async function addGuest(formData: FormData) {
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/host/${partyId}/dashboard`)
 }
+
+
+export async function updatePartyDetails(formData: FormData) {
+  const partyId = formData.get("partyId") as string
+  const storyTheme = formData.get("storyTheme") as string
+  const venueDescription = formData.get("venueDescription") as string
+
+  await supabase
+    .from("parties")
+    .update({
+      story_theme: storyTheme,
+      setting_description: venueDescription
+    })
+    .eq("id", partyId)
+
+  const { revalidatePath } = await import("next/cache")
+  revalidatePath(`/host/${partyId}/dashboard`)
+}

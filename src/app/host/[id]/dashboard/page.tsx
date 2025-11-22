@@ -98,24 +98,59 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                         </div>
                     </div>
 
-                    {/* AI Control Center */}
+                    {/* Story & Venue Configuration */}
                     <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                        <h2 className="text-xl font-semibold mb-4 text-purple-400">AI Director</h2>
-                        <p className="text-slate-400 text-sm mb-6">
-                            Once everyone has joined, generate the mystery. This will assign roles and start the game.
-                        </p>
-                        <form action={async () => {
+                        <h2 className="text-xl font-semibold mb-4 text-purple-400">Mystery Setup</h2>
+
+                        <form action={async (formData) => {
                             'use server'
-                            const { generateMystery } = await import('@/app/actions')
-                            await generateMystery(id)
-                        }}>
-                            <button
-                                disabled={!guests || guests.length < 3}
-                                className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {guests && guests.length < 3 ? `Need ${3 - guests.length} more guests` : 'Generate Mystery'}
+                            const { updatePartyDetails } = await import('@/app/actions')
+                            await updatePartyDetails(formData)
+                        }} className="space-y-4 mb-6">
+                            <input type="hidden" name="partyId" value={id} />
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Story/Theme</label>
+                                <textarea
+                                    name="storyTheme"
+                                    rows={3}
+                                    defaultValue={party.story_theme || ''}
+                                    placeholder='e.g. "Pokemon", "1920s Gatsby", "Sci-fi space station"'
+                                    className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 placeholder:text-slate-600 resize-none text-sm"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Physical Venue</label>
+                                <textarea
+                                    name="venueDescription"
+                                    rows={2}
+                                    defaultValue={party.setting_description || ''}
+                                    placeholder="e.g. My living room, a garden, basement with pool table"
+                                    className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 placeholder:text-slate-600 resize-none text-sm"
+                                />
+                            </div>
+
+                            <button className="w-full py-2 bg-slate-800 text-white rounded-md font-medium hover:bg-slate-700 transition-colors text-sm">
+                                Save Details
                             </button>
                         </form>
+
+                        <div className="border-t border-slate-800 pt-6">
+                            <p className="text-slate-400 text-sm mb-4">Ready to generate the mystery?</p>
+                            <form action={async () => {
+                                'use server'
+                                const { generateMystery } = await import('@/app/actions')
+                                await generateMystery(id)
+                            }}>
+                                <button
+                                    disabled={!guests || guests.length < 3}
+                                    className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {guests && guests.length < 3 ? `Need ${3 - guests.length} more guests` : 'Generate Mystery'}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -190,8 +225,13 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                             return (
                                 <div key={guest.id} className={`bg-slate-900 p-4 rounded-xl border ${char.secret_objective.includes('MURDERER') ? 'border-red-900/50' : 'border-slate-800'}`}>
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-white">{char.name}</h3>
-                                        <span className="text-xs text-slate-500">{guest.name}</span>
+                                        <div>
+                                            <h3 className="font-bold text-white">{char.name}</h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-slate-500">{guest.name}</span>
+                                                <code className="text-xs bg-slate-950 px-2 py-0.5 rounded text-purple-400 font-mono">PIN: {guest.access_pin}</code>
+                                            </div>
+                                        </div>
                                     </div>
                                     <p className="text-sm text-purple-400 mb-2">{char.role}</p>
                                     <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded">
