@@ -444,3 +444,37 @@ export async function updateCharacter(characterId: string, fields: {
     // We don't know the party ID here, but we can revalidate the entire path pattern
     revalidatePath('/host/[id]/review', 'page')
 }
+
+export async function updatePhysicalClue(partyId: string, clueIndex: number, clueData: any) {
+    'use server'
+
+    // 1. Fetch current clues
+    const { data: party, error: fetchError } = await supabase
+        .from('parties')
+        .select('physical_clues')
+        .eq('id', partyId)
+        .single()
+
+    if (fetchError || !party) {
+        throw new Error('Failed to fetch party clues')
+    }
+
+    // 2. Update the specific clue
+    const currentClues = (party.physical_clues as any[]) || []
+    if (clueIndex >= 0 && clueIndex < currentClues.length) {
+        currentClues[clueIndex] = { ...currentClues[clueIndex], ...clueData }
+    }
+
+    // 3. Save back to DB
+    const { error: updateError } = await supabase
+        .from('parties')
+        .update({ physical_clues: currentClues })
+        .eq('id', partyId)
+
+    if (updateError) {
+        throw new Error(`Failed to update clue: ${updateError.message}`)
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/review`)
+}

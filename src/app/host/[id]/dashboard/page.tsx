@@ -155,16 +155,76 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                 </div>
             ) : (
                 <div className="space-y-8">
-                    {/* Game Intro */}
-                    <div className="bg-gradient-to-r from-purple-900/20 to-slate-900 p-8 rounded-xl border border-purple-500/30">
-                        <h2 className="text-3xl font-bold text-white mb-4">{party.name}</h2>
-                        <div className="prose prose-invert max-w-none">
-                            <h3 className="text-purple-400 uppercase tracking-wider text-sm font-bold mb-2">Read to Guests:</h3>
-                            <p className="text-lg leading-relaxed text-slate-200 bg-slate-950/50 p-6 rounded-lg border border-slate-800">
-                                {party.setting_description}
-                            </p>
+                    {/* Game Intro & Victim Info */}
+                    <div className="grid gap-6 md:grid-cols-2">
+                        <div className="bg-gradient-to-r from-purple-900/20 to-slate-900 p-8 rounded-xl border border-purple-500/30">
+                            <h2 className="text-3xl font-bold text-white mb-4">{party.name}</h2>
+                            <div className="prose prose-invert max-w-none">
+                                <h3 className="text-purple-400 uppercase tracking-wider text-sm font-bold mb-2">Read to Guests:</h3>
+                                <p className="text-lg leading-relaxed text-slate-200 bg-slate-950/50 p-6 rounded-lg border border-slate-800">
+                                    {party.setting_description}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Victim Card */}
+                        {party.victim && (
+                            <div className="bg-slate-900 border border-red-900/50 rounded-xl p-6">
+                                <h2 className="text-2xl font-bold text-red-400 mb-4 flex items-center gap-2">
+                                    <span>💀</span> The Murder
+                                </h2>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white mb-2">{(party.victim as any).name}</h3>
+                                    <p className="text-slate-400 text-sm mb-1">{(party.victim as any).role}</p>
+                                    <div className="mt-4 space-y-2 text-sm">
+                                        <p className="text-slate-300">
+                                            <span className="text-red-400 font-medium">Cause:</span> {(party.victim as any).causeOfDeath}
+                                        </p>
+                                        <p className="text-slate-300">
+                                            <span className="text-red-400 font-medium">Time:</span> {(party.victim as any).timeOfDeath}
+                                        </p>
+                                        <p className="text-slate-300">
+                                            <span className="text-red-400 font-medium">Location:</span> {(party.victim as any).location}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
+
+                    {/* Physical Clue Checklist */}
+                    {party.physical_clues && (party.physical_clues as any[]).length > 0 && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                            <h2 className="text-xl font-semibold mb-4 text-purple-400 flex items-center gap-2">
+                                <span>🔍</span> Physical Clue Checklist
+                            </h2>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {(party.physical_clues as any[]).map((clue: any, idx: number) => (
+                                    <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-start gap-3">
+                                        <div className="mt-1">
+                                            <div className={`w-4 h-4 rounded border ${clue.timing === 'pre-dinner' ? 'border-blue-500 bg-blue-500/20' : 'border-orange-500 bg-orange-500/20'
+                                                }`} />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase ${clue.timing === 'pre-dinner'
+                                                        ? 'bg-blue-900/30 text-blue-400'
+                                                        : 'bg-orange-900/30 text-orange-400'
+                                                    }`}>
+                                                    {clue.timing === 'pre-dinner' ? 'Pre-Dinner' : 'Post-Murder'}
+                                                </span>
+                                                <h3 className="text-white font-medium text-sm">{clue.description}</h3>
+                                            </div>
+                                            <p className="text-purple-400 text-xs font-medium mb-1">
+                                                📍 {clue.setupInstruction}
+                                            </p>
+                                            <p className="text-slate-400 text-xs italic">"{clue.content}"</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Game Controls */}
                     <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
@@ -222,8 +282,9 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                         {guests?.map((guest: any) => {
                             const char = guest.characters[0];
                             if (!char) return null;
+                            const isMurderer = char.secret_objective.includes('MURDERER');
                             return (
-                                <div key={guest.id} className={`bg-slate-900 p-4 rounded-xl border ${char.secret_objective.includes('MURDERER') ? 'border-red-900/50' : 'border-slate-800'}`}>
+                                <div key={guest.id} className={`bg-slate-900 p-4 rounded-xl border ${isMurderer ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <h3 className="font-bold text-white">{char.name}</h3>
@@ -232,10 +293,33 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                                 <code className="text-xs bg-slate-950 px-2 py-0.5 rounded text-purple-400 font-mono">PIN: {guest.access_pin}</code>
                                             </div>
                                         </div>
+                                        {isMurderer && (
+                                            <span className="bg-red-900/30 text-red-400 px-2 py-1 rounded text-xs font-medium border border-red-800/50">
+                                                MURDERER
+                                            </span>
+                                        )}
                                     </div>
+
+                                    {char.portrait_url && (
+                                        <div className="mb-3 rounded-lg overflow-hidden border border-slate-800">
+                                            <img src={char.portrait_url} alt={char.name} className="w-full h-32 object-cover" />
+                                        </div>
+                                    )}
+
                                     <p className="text-sm text-purple-400 mb-2">{char.role}</p>
-                                    <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded">
-                                        <span className="font-bold text-slate-300">Secret:</span> {char.secret_objective}
+
+                                    {char.opening_action && (
+                                        <div className="mb-2 bg-yellow-950/20 border-l-2 border-yellow-600 px-2 py-1">
+                                            <p className="text-[10px] text-yellow-500 font-bold uppercase">Opening Action</p>
+                                            <p className="text-xs text-yellow-200">{char.opening_action}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
+                                        <span className={`font-bold ${isMurderer ? 'text-red-400' : 'text-slate-300'}`}>
+                                            {isMurderer ? 'Secret Objective:' : 'Objective:'}
+                                        </span>
+                                        <p className="mt-1">{char.secret_objective}</p>
                                     </div>
                                 </div>
                             )

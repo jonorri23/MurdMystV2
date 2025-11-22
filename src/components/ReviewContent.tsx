@@ -96,32 +96,28 @@ export function ReviewContent({
                 </div>
             )}
 
-            {/* Physical Clue Checklist */}
+            import {EditableClue} from '@/components/EditableClue'
+
+            // ... inside ReviewContent component ...
+
+            {/* Physical Clue Checklist - Editable */}
             {party.physical_clues && party.physical_clues.length > 0 && (
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
                     <h2 className="text-2xl font-bold text-purple-400 mb-4 flex items-center gap-2">
-                        <span>🔍</span> Physical Clue Setup
+                        <span>🔍</span> Physical Clue Setup (Editable)
                     </h2>
                     <p className="text-slate-400 text-sm mb-6">
                         Set up these physical clues BEFORE the game starts.
                     </p>
                     <div className="space-y-3">
                         {party.physical_clues.map((clue: any, idx: number) => (
-                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${clue.timing === 'pre-dinner'
-                                            ? 'bg-blue-900/30 text-blue-400'
-                                            : 'bg-orange-900/30 text-orange-400'
-                                        }`}>
-                                        {clue.timing === 'pre-dinner' ? 'Pre-Dinner' : 'Post-Murder'}
-                                    </span>
-                                    <h3 className="text-white font-medium">{clue.description}</h3>
-                                </div>
-                                <p className="text-purple-400 text-sm font-medium mb-2">
-                                    📍 {clue.setupInstruction}
-                                </p>
-                                <p className="text-slate-400 text-sm italic">"{clue.content}"</p>
-                            </div>
+                            <EditableClue
+                                key={idx}
+                                partyId={party.id}
+                                clue={clue}
+                                index={idx}
+                                onUpdate={onRefresh}
+                            />
                         ))}
                     </div>
                 </div>
