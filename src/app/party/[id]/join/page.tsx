@@ -82,6 +82,17 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
                             className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600 resize-none"
                         />
                         <p className="text-xs text-slate-500">
+                            Optional notes to help the AI match you with a fun character role.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label htmlFor="password" className="text-sm font-medium text-slate-300">
+                            Secret Password
+                        </label>
+                        <input
+                            id="password"
+                            name="password"
                             type="password"
                             inputMode="numeric"
                             pattern="[0-9]*"
@@ -90,9 +101,9 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
                             placeholder="1234"
                             className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600"
                         />
-                            <p className="text-xs text-slate-500">
-                                You'll need this to see your clues later. Keep it safe!
-                            </p>
+                        <p className="text-xs text-slate-500">
+                            You'll need this to see your clues later. Keep it safe!
+                        </p>
                     </div>
 
                     <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
