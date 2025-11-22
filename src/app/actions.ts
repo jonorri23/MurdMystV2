@@ -421,3 +421,26 @@ export async function updatePartyDetails(formData: FormData) {
     const { revalidatePath } = await import("next/cache")
     revalidatePath(`/host/${partyId}/dashboard`)
 }
+
+export async function updateCharacter(characterId: string, fields: {
+    name?: string
+    role?: string
+    backstory?: string
+    secret_objective?: string
+    opening_action?: string
+    relationships?: any[]
+    quirks?: string[]
+}) {
+    const { error } = await supabase
+        .from('characters')
+        .update(fields)
+        .eq('id', characterId)
+
+    if (error) {
+        throw new Error(`Failed to update character: ${error.message}`)
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    // We don't know the party ID here, but we can revalidate the entire path pattern
+    revalidatePath('/host/[id]/review', 'page')
+}
