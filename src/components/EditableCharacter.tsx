@@ -1,13 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { updateCharacter } from '@/app/actions'
+import { updateCharacter, regenerateCharacter } from '@/app/actions'
 
 export function EditableCharacter({ character, onUpdate }: {
     character: any
     onUpdate: () => void
 }) {
     const [isEditing, setIsEditing] = useState(false)
+    const [isRegenerating, setIsRegenerating] = useState(false)
+    const [regenPrompt, setRegenPrompt] = useState('')
+    const [isLoading, setIsLoading] = useState(false)
+
     const [formData, setFormData] = useState({
         name: character.name,
         role: character.role,
@@ -24,7 +28,57 @@ export function EditableCharacter({ character, onUpdate }: {
         onUpdate()
     }
 
+    const handleRegenerate = async () => {
+        if (!regenPrompt.trim()) return
+        setIsLoading(true)
+        try {
+            await regenerateCharacter(character.id, regenPrompt)
+            setIsRegenerating(false)
+            setRegenPrompt('')
+            onUpdate()
+        } catch (error) {
+            console.error('Regeneration failed', error)
+            alert('Failed to regenerate character')
+        }
+        setIsLoading(false)
+    }
+
     const isMurderer = character.secret_objective?.includes('MURDERER')
+
+    if (isRegenerating) {
+        return (
+            <div className="bg-slate-950 border border-blue-600 rounded-lg p-5">
+                <h3 className="text-blue-400 font-bold mb-2 flex items-center gap-2">
+                    <span>🤖</span> AI Character Regeneration
+                </h3>
+                <p className="text-slate-400 text-sm mb-4">
+                    Describe how you want to change this character. The AI will rewrite their role, backstory, and secrets while keeping them integrated in the story.
+                </p>
+                <textarea
+                    value={regenPrompt}
+                    onChange={(e) => setRegenPrompt(e.target.value)}
+                    placeholder="E.g. 'Make them a secret agent', 'Give them a British accent', 'Make them more suspicious'"
+                    className="w-full p-3 bg-slate-900 border border-slate-700 rounded text-white text-sm mb-4 h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleRegenerate}
+                        disabled={isLoading || !regenPrompt.trim()}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded font-medium text-sm flex items-center gap-2"
+                    >
+                        {isLoading ? 'Regenerating...' : '✨ Regenerate Character'}
+                    </button>
+                    <button
+                        onClick={() => setIsRegenerating(false)}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-medium text-sm"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        )
+    }
 
     if (!isEditing) {
         return (
@@ -41,6 +95,12 @@ export function EditableCharacter({ character, onUpdate }: {
                                 Murderer
                             </span>
                         )}
+                        <button
+                            onClick={() => setIsRegenerating(true)}
+                            className="px-2 py-1 bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 border border-blue-800/50 rounded text-xs font-medium"
+                        >
+                            ✨ AI Edit
+                        </button>
                         <button
                             onClick={() => setIsEditing(true)}
                             className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium"

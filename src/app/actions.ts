@@ -478,3 +478,184 @@ export async function updatePhysicalClue(partyId: string, clueIndex: number, clu
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/host/${partyId}/review`)
 }
+
+export async function regenerateCharacter(characterId: string, prompt: string) {
+    'use server'
+
+    // 1. Fetch current character
+    const { data: char, error: fetchError } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', characterId)
+        .single()
+
+    if (fetchError || !char) {
+        throw new Error('Failed to fetch character')
+    }
+
+    // 2. Call AI to regenerate
+    const { generateObject } = await import('ai')
+    const { openai } = await import('@ai-sdk/openai')
+    const { z } = await import('zod')
+
+    const schema = z.object({
+        name: z.string(),
+        role: z.string(),
+        backstory: z.string(),
+        secret_objective: z.string(),
+        opening_action: z.string(),
+        quirks: z.array(z.string()),
+        relationships: z.array(z.object({
+            character: z.string(),
+            relationship: z.string()
+        }))
+    })
+
+    const systemPrompt = `You are an expert murder mystery writer. 
+    Your task is to REWRITE a specific character based on the user's instruction.
+    Keep the character fitting within the existing mystery theme.
+    
+    Current Character:
+    Name: ${char.name}
+    Role: ${char.role}
+    Backstory: ${char.backstory}
+    
+    User Instruction: "${prompt}"
+    
+    Return a complete, valid JSON object for the updated character.`
+
+    const { object } = await generateObject({
+        model: openai('gpt-4o'),
+        schema,
+        prompt: systemPrompt,
+    })
+
+    // 3. Update DB
+    const { error: updateError } = await supabase
+        .from('characters')
+        .update({
+            name: object.name,
+            role: object.role,
+            backstory: object.backstory,
+            secret_objective: object.secret_objective,
+            opening_action: object.opening_action,
+            quirks: object.quirks,
+            relationships: object.relationships
+        })
+        .eq('id', characterId)
+
+    if (updateError) {
+        throw new Error('Failed to update character')
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/host/[id]/review', 'page')
+}
+
+export async function adjustStory(partyId: string, instruction: string) {
+    'use server'
+
+    // 1. Fetch current party state
+    const { data: party, error: fetchError } = await supabase
+        .from('parties')
+        .select('*')
+        .eq('id', partyId)
+        .single()
+
+    if (fetchError || !party) {
+        throw new Error('Failed to fetch party')
+    }
+
+    const { data: characters } = await supabase
+        .from('characters')
+        .select('*')
+        .in('guest_id', (await supabase.from('guests').select('id').eq('party_id', partyId)).data?.map(g => g.id) || [])
+
+    // 2. Call AI to adjust
+    const { generateObject } = await import('ai')
+    const { openai } = await import('@ai-sdk/openai')
+    const { z } = await import('zod')
+
+    const schema = z.object({
+        victim: z.object({
+            name: z.string(),
+            role: z.string(),
+            causeOfDeath: z.string(),
+            timeOfDeath: z.string(),
+            location: z.string(),
+            backstory: z.string(),
+        }),
+        characters: z.array(z.object({
+            id: z.string(), // Keep ID to map back
+            name: z.string(),
+            role: z.string(),
+            backstory: z.string(),
+            secret_objective: z.string(),
+            opening_action: z.string(),
+            quirks: z.array(z.string()),
+            relationships: z.array(z.object({
+                character: z.string(),
+                relationship: z.string()
+            }))
+        })),
+        physicalClues: z.array(z.object({
+            description: z.string(),
+            setupInstruction: z.string(),
+            content: z.string(),
+            timing: z.enum(['pre-dinner', 'post-murder']),
+            relatedTo: z.array(z.string())
+        }))
+    })
+
+    const systemPrompt = `You are an expert murder mystery editor.
+    Your task is to MODIFY the existing mystery based on the user's instruction.
+    
+    CRITICAL: You must return the EXACT same character IDs so we can update them.
+    
+    Current Story:
+    Title: ${party.name}
+    Theme: ${party.story_theme}
+    Victim: ${JSON.stringify(party.victim)}
+    Characters: ${JSON.stringify(characters?.map(c => ({ id: c.id, name: c.name, role: c.role })))}
+    
+    USER INSTRUCTION: "${instruction}"
+    
+    Rewrite the necessary parts of the victim, characters, and clues to satisfy the instruction.
+    Keep unchanged parts consistent.
+    Return the full updated objects.`
+
+    const { object } = await generateObject({
+        model: openai('gpt-4o'),
+        schema,
+        prompt: systemPrompt,
+    })
+
+    // 3. Update DB
+    // Update Party (Victim + Clues)
+    await supabase
+        .from('parties')
+        .update({
+            victim: object.victim,
+            physical_clues: object.physicalClues
+        })
+        .eq('id', partyId)
+
+    // Update Characters (Loop)
+    for (const char of object.characters) {
+        await supabase
+            .from('characters')
+            .update({
+                name: char.name,
+                role: char.role,
+                backstory: char.backstory,
+                secret_objective: char.secret_objective,
+                opening_action: char.opening_action,
+                quirks: char.quirks,
+                relationships: char.relationships
+            })
+            .eq('id', char.id)
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/review`, 'page')
+}

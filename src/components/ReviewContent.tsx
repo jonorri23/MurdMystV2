@@ -1,6 +1,8 @@
 'use client'
 
 import { EditableCharacter } from '@/components/EditableCharacter'
+import { EditableClue } from '@/components/EditableClue'
+import { adjustStory } from '@/app/actions'
 import { useState } from 'react'
 
 export function ReviewContent({
@@ -14,6 +16,8 @@ export function ReviewContent({
 }) {
     const [isCheckingStory, setIsCheckingStory] = useState(false)
     const [storyCheckResult, setStoryCheckResult] = useState<string | null>(null)
+    const [isAdjusting, setIsAdjusting] = useState(false)
+    const [adjustmentPrompt, setAdjustmentPrompt] = useState('')
 
     const checkStoryCoherence = async () => {
         setIsCheckingStory(true)
@@ -36,29 +40,74 @@ export function ReviewContent({
         setIsCheckingStory(false)
     }
 
+    const handleAdjustStory = async () => {
+        if (!adjustmentPrompt.trim()) return
+        setIsAdjusting(true)
+        try {
+            await adjustStory(party.id, adjustmentPrompt)
+            setAdjustmentPrompt('')
+            onRefresh()
+            setStoryCheckResult('Story updated successfully! Run a new check to verify.')
+        } catch (error) {
+            console.error('Adjustment failed', error)
+            alert('Failed to adjust story')
+        }
+        setIsAdjusting(false)
+    }
+
     return (
         <div className="space-y-8">
-            {/* AI Story Check Button */}
+            {/* AI Story Assistant */}
             <div className="bg-gradient-to-r from-blue-900/30 to-slate-900/30 border border-blue-800/50 rounded-xl p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-xl font-bold text-blue-400 mb-2">🤖 AI Story Check</h2>
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="text-2xl">🤖</span>
+                    <h2 className="text-xl font-bold text-blue-400">AI Story Assistant</h2>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Analysis Column */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">1. Analyze</h3>
                         <p className="text-slate-400 text-sm">
-                            Have GPT-4o analyze your mystery for plot holes, inconsistencies, and improvements.
+                            Get feedback on plot holes, consistency, and drama.
                         </p>
+                        <button
+                            onClick={checkStoryCoherence}
+                            disabled={isCheckingStory || isAdjusting}
+                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg font-medium text-sm"
+                        >
+                            {isCheckingStory ? 'Analyzing...' : 'Check Story Coherence'}
+                        </button>
                     </div>
-                    <button
-                        onClick={checkStoryCoherence}
-                        disabled={isCheckingStory}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg font-medium"
-                    >
-                        {isCheckingStory ? 'Analyzing...' : 'Check Story'}
-                    </button>
+
+                    {/* Adjustment Column */}
+                    <div className="space-y-4 border-l border-slate-800 pl-6">
+                        <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">2. Adjust</h3>
+                        <p className="text-slate-400 text-sm">
+                            Tell the AI to change specific elements (e.g. "Make the victim a celebrity").
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={adjustmentPrompt}
+                                onChange={(e) => setAdjustmentPrompt(e.target.value)}
+                                placeholder="Instruction (e.g. 'Change the murder weapon to a poisoned apple')"
+                                className="flex-1 px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            <button
+                                onClick={handleAdjustStory}
+                                disabled={isAdjusting || !adjustmentPrompt.trim()}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-800 text-white rounded-lg font-medium text-sm whitespace-nowrap"
+                            >
+                                {isAdjusting ? 'Updating...' : 'Apply Changes'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {storyCheckResult && (
-                    <div className="mt-4 bg-slate-950 border border-slate-800 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-blue-400 uppercase mb-2">AI Analysis</h3>
+                    <div className="mt-6 bg-slate-950 border border-slate-800 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
+                        <h3 className="text-sm font-semibold text-blue-400 uppercase mb-2">AI Analysis / Status</h3>
                         <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
                             {storyCheckResult}
                         </div>
@@ -95,10 +144,6 @@ export function ReviewContent({
                     </div>
                 </div>
             )}
-
-            import {EditableClue} from '@/components/EditableClue'
-
-            // ... inside ReviewContent component ...
 
             {/* Physical Clue Checklist - Editable */}
             {party.physical_clues && party.physical_clues.length > 0 && (
