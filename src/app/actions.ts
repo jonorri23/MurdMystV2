@@ -190,9 +190,31 @@ export async function generateMystery(partyId: string) {
         .eq('id', partyId)
 
     // Create Characters and Generate Portraits
-    const characterInserts = await Promise.all(object.characters.map(async char => {
-        const guest = guests.find(g => g.name === char.guestName)
-        if (!guest) return null
+    console.log('=== MATCHING GUESTS TO CHARACTERS ===');
+    console.log('Available guests:', guests.map(g => ({ id: g.id, name: g.name })));
+    console.log('AI generated characters for:', object.characters.map(c => c.guestName));
+
+    const characterInserts = await Promise.all(object.characters.map(async (char, index) => {
+        // Try exact match first, then case-insensitive, then fuzzy match by index
+        let guest = guests.find(g => g.name === char.guestName);
+
+        if (!guest) {
+            // Try case-insensitive match
+            guest = guests.find(g => g.name.toLowerCase().trim() === char.guestName.toLowerCase().trim());
+        }
+
+        if (!guest) {
+            // Fallback: match by index (order)
+            console.warn(`Could not find guest "${char.guestName}" by name, using index ${index}`);
+            guest = guests[index];
+        }
+
+        if (!guest) {
+            console.error(`CRITICAL: No guest found for character ${char.roleName} (guestName: ${char.guestName})`);
+            return null;
+        }
+
+        console.log(`Matched "${char.guestName}" → Guest "${guest.name}" (${guest.id})`);
 
         // Generate portrait using gpt-image-1
         let portraitUrl = null
@@ -229,10 +251,18 @@ export async function generateMystery(partyId: string) {
 
     const validCharacterInserts = characterInserts.filter(Boolean)
 
+    console.log('=== CHARACTER INSERT DEBUG ===');
+    console.log('Number of characters to insert:', validCharacterInserts.length);
+    console.log('Character inserts:', JSON.stringify(validCharacterInserts, null, 2));
+
     if (validCharacterInserts.length > 0) {
-        const { error: charError } = await supabase
+        const { error: charError, data: insertedChars } = await supabase
             .from('characters')
             .insert(validCharacterInserts as any)
+            .select()
+
+        console.log('Insert result - error:', charError);
+        console.log('Insert result - data:', insertedChars);
 
         if (charError) {
             console.error('Error inserting characters:', charError)

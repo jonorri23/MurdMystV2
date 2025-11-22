@@ -4,23 +4,38 @@ import { notFound } from 'next/navigation';
 export default async function GuestDashboard({ params }: { params: Promise<{ id: string; guestId: string }> }) {
     const { id, guestId } = await params;
 
+    console.log('=== GUEST PAGE DEBUG ===');
+    console.log('Party ID:', id);
+    console.log('Guest ID:', guestId);
+
     const { data: guest } = await supabase
         .from('guests')
         .select('*, parties(name, status)')
         .eq('id', guestId)
         .single();
 
+    console.log('Guest data:', guest);
+
     if (!guest) {
+        console.log('ERROR: Guest not found!');
         notFound();
     }
 
     const party = guest.parties as unknown as { name: string, status: string };
+    console.log('Party status:', party.status);
 
-    const { data: character } = await supabase
+    // Try character query with detailed debugging
+    const characterQuery = await supabase
         .from('characters')
         .select('*')
         .eq('guest_id', guestId)
         .single();
+
+    console.log('Character query result:', characterQuery);
+    console.log('Character data:', characterQuery.data);
+    console.log('Character error:', characterQuery.error);
+
+    const character = characterQuery.data;
 
     const { data: allEvents } = await supabase
         .from('game_events')

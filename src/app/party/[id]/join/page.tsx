@@ -8,12 +8,36 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
 
     const { data: party } = await supabase
         .from('parties')
-        .select('name')
+        .select('name, status')
         .eq('id', id)
         .single();
 
     if (!party) {
         notFound();
+    }
+
+    // Block joining if game has already started
+    if (party.status !== 'planning') {
+        return (
+            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6">
+                <div className="w-full max-w-md space-y-8 text-center">
+                    <div className="bg-red-950/30 border border-red-900/50 rounded-xl p-8">
+                        <h1 className="text-2xl font-bold text-red-400 mb-4">
+                            Game Already Started
+                        </h1>
+                        <p className="text-slate-300 mb-6">
+                            This party has already begun. New guests cannot join after the mystery has been generated.
+                        </p>
+                        <p className="text-sm text-slate-500">
+                            Party: <span className="text-purple-400">{party.name}</span>
+                        </p>
+                        <p className="text-sm text-slate-500 mt-2">
+                            Status: <span className="text-yellow-400 capitalize">{party.status}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -24,7 +48,7 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
                         Join {party.name}
                     </h1>
                     <p className="mt-2 text-slate-400">
-                        Join the party! You'll be assigned a random character role fitting the mystery theme.
+                        Enter your details to join the mystery party!
                     </p>
                 </div>
 
@@ -40,34 +64,24 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
                             name="name"
                             type="text"
                             required
-                            placeholder="John Doe"
-                            className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600"
+                            autoFocus
+                            placeholder="Enter your name"
+                            className="w-full h-12 px-4 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label htmlFor="personality" className="text-sm font-medium text-slate-300">
-                            Personality Notes <span className="text-slate-500 font-normal">(Optional)</span>
+                        <label htmlFor="personalityNotes" className="text-sm font-medium text-slate-300">
+                            Personality Notes <span className="text-slate-500">(Optional)</span>
                         </label>
                         <textarea
-                            id="personality"
-                            name="personality"
-                            rows={4}
-                            placeholder="e.g. I'm outgoing, love drama..."
+                            id="personalityNotes"
+                            name="personalityNotes"
+                            rows={3}
+                            placeholder="e.g. Loves drama, shy, competitive..."
                             className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600 resize-none"
                         />
                         <p className="text-xs text-slate-500">
-                            Add notes if you want a specific vibe, otherwise the AI will randomize your role based on the party theme.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label htmlFor="accessPin" className="text-sm font-medium text-slate-300">
-                            Secret Access PIN
-                        </label>
-                        <input
-                            id="accessPin"
-                            name="accessPin"
                             type="password"
                             inputMode="numeric"
                             pattern="[0-9]*"
@@ -76,9 +90,9 @@ export default async function JoinPartyPage({ params }: { params: Promise<{ id: 
                             placeholder="1234"
                             className="w-full h-10 px-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600"
                         />
-                        <p className="text-xs text-slate-500">
-                            You'll need this to see your clues later. Keep it safe!
-                        </p>
+                            <p className="text-xs text-slate-500">
+                                You'll need this to see your clues later. Keep it safe!
+                            </p>
                     </div>
 
                     <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
