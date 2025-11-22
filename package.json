@@ -9,9 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.71",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@supabase/supabase-js": "^2.84.0",
+    "ai": "^5.0.99",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.24",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.554.0",
     "next": "16.0.3",
+    "openai": "^6.9.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
