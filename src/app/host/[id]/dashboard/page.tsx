@@ -97,6 +97,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                 </>
                             )}
                         </div>
+                        <ShareLink gameId={party.id} />
                     </div>
 
                     {/* Story & Venue Configuration */}
