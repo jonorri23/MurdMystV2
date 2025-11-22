@@ -211,7 +211,7 @@ export async function generateMystery(partyId: string) {
                 size: '1024x1024',
             })
 
-            portraitUrl = response.data[0]?.url || null
+            portraitUrl = response.data?.[0]?.url || null
         } catch (error) {
             console.error(`Failed to generate portrait for ${char.roleName}:`, error)
             // Continue without portrait
@@ -230,9 +230,14 @@ export async function generateMystery(partyId: string) {
     const validCharacterInserts = characterInserts.filter(Boolean)
 
     if (validCharacterInserts.length > 0) {
-        await supabase
+        const { error: charError } = await supabase
             .from('characters')
             .insert(validCharacterInserts as any)
+
+        if (charError) {
+            console.error('Error inserting characters:', charError)
+            throw new Error(`Failed to create characters: ${charError.message}`)
+        }
     }
 
     // Create Pre-generated Clues
@@ -329,18 +334,18 @@ export async function addGuest(formData: FormData) {
 
 
 export async function updatePartyDetails(formData: FormData) {
-  const partyId = formData.get("partyId") as string
-  const storyTheme = formData.get("storyTheme") as string
-  const venueDescription = formData.get("venueDescription") as string
+    const partyId = formData.get("partyId") as string
+    const storyTheme = formData.get("storyTheme") as string
+    const venueDescription = formData.get("venueDescription") as string
 
-  await supabase
-    .from("parties")
-    .update({
-      story_theme: storyTheme,
-      setting_description: venueDescription
-    })
-    .eq("id", partyId)
+    await supabase
+        .from("parties")
+        .update({
+            story_theme: storyTheme,
+            setting_description: venueDescription
+        })
+        .eq("id", partyId)
 
-  const { revalidatePath } = await import("next/cache")
-  revalidatePath(`/host/${partyId}/dashboard`)
+    const { revalidatePath } = await import("next/cache")
+    revalidatePath(`/host/${partyId}/dashboard`)
 }

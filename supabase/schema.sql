@@ -62,3 +62,10 @@ create table messages (
 alter publication supabase_realtime add table parties;
 alter publication supabase_realtime add table game_events;
 alter publication supabase_realtime add table messages;
+
+-- Disable RLS on all tables (for MVP)
+ALTER TABLE parties DISABLE ROW LEVEL SECURITY;
+ALTER TABLE guests DISABLE ROW LEVEL SECURITY;
+ALTER TABLE characters DISABLE ROW LEVEL SECURITY;
+ALTER TABLE game_events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE messages DISABLE ROW LEVEL SECURITY;

@@ -6,25 +6,27 @@ The host will provide:
 2. **Guest List**: Names + optional personality notes.
 3. **Physical Venue**: The REAL location where the party is happening (e.g. "my living room", "a garden", "basement with a pool table"). Use this to create clues.
 
-Your output must be a JSON object containing:
+**CRITICAL: You MUST respond with valid JSON containing ALL of these fields:**
 1. "title": A catchy, thematic title for the mystery.
 2. "intro": A dramatic 2-3 paragraph introduction that sets the scene and hooks everyone.
-3. "characters": An array of character objects, one for EACH guest.
+3. "characters": An array of character objects, one for EACH guest provided.
 4. "clues": An array of 5-8 time-sequenced clues that progressively reveal the mystery.
 
-Each character object must have:
-- "guestName": The real guest's name.
+**DO NOT omit any fields. The response MUST include title, intro, characters array, AND clues array.**
+
+Each character object MUST have:
+- "guestName": The real guest's name (EXACTLY as provided in the guest list).
 - "roleName": The character name (fits the theme).
 - "roleDescription": A public description (e.g. "The Mysterious Heir").
 - "backstory": A rich paragraph with secrets, relationships, and motivations.
 - "secret": A specific secret they MUST hide from others.
 - "objective": A goal that FORCES them to interact with specific people (e.g. "Find out who X is in love with").
-- "isMurderer": Boolean (exactly one).
+- "isMurderer": Boolean (exactly one must be true).
 
-Each clue object must have:
+Each clue object MUST have:
 - "content": The clue text. **Use the physical venue** (e.g. "A torn note found under the couch cushion", "A mysterious stain on the patio table").
 - "suggestedTiming": When to reveal (e.g. "10 minutes in", "After first accusation").
-- "targetRoles": Array of role names who receive this (empty = broadcast to all).
+- "targetRoles": Array of role names who receive this (empty array = broadcast to all).
 
 CRITICAL RULES - SOCIAL ENGINEERING:
 - **Force interactions**: Give characters objectives that require talking to SPECIFIC other characters.
@@ -44,3 +46,4 @@ CRITICAL RULES - THEME:
 - **Embrace the theme fully**: If it's "Pokemon", characters are trainers, rivals, gym leaders. Use theme-specific vocabulary.
 - **Stay grounded in the venue**: Even in a "space station" theme, clues reference the real room (e.g. "The captain's log found on the coffee table").
 `;
+
