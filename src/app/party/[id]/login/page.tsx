@@ -8,12 +8,36 @@ export default async function GuestLoginPage({ params }: { params: Promise<{ id:
 
     const { data: party } = await supabase
         .from('parties')
-        .select('name')
+        .select('name, status')
         .eq('id', id)
         .single();
 
     if (!party) {
         notFound();
+    }
+
+    // Only allow login when game is active
+    if (party.status !== 'active') {
+        return (
+            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6">
+                <div className="w-full max-w-md space-y-8 text-center">
+                    <div className="bg-yellow-950/30 border border-yellow-900/50 rounded-xl p-8">
+                        <h1 className="text-2xl font-bold text-yellow-400 mb-4">
+                            Game Not Started Yet
+                        </h1>
+                        <p className="text-slate-300 mb-6">
+                            The host is still preparing the mystery. You'll be able to log in once the game starts!
+                        </p>
+                        <p className="text-sm text-slate-500">
+                            Party: <span className="text-purple-400">{party.name}</span>
+                        </p>
+                        <p className="text-sm text-slate-500 mt-2">
+                            Status: <span className="text-yellow-400 capitalize">{party.status}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -24,7 +48,7 @@ export default async function GuestLoginPage({ params }: { params: Promise<{ id:
                         {party.name}
                     </h1>
                     <p className="mt-2 text-slate-400">
-                        Enter your PIN to view your character.
+                        Enter your PIN to reveal your role
                     </p>
                 </div>
 
@@ -33,27 +57,27 @@ export default async function GuestLoginPage({ params }: { params: Promise<{ id:
 
                     <div className="space-y-2">
                         <label htmlFor="accessPin" className="text-sm font-medium text-slate-300">
-                            Your PIN
+                            Your 4-Digit PIN
                         </label>
                         <input
                             id="accessPin"
                             name="accessPin"
                             type="password"
                             inputMode="numeric"
-                            pattern="[0-9]*"
+                            pattern="[0-9]{4}"
                             maxLength={4}
                             required
-                            placeholder="1234"
                             autoFocus
-                            className="w-full h-12 px-4 text-center text-2xl tracking-widest rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600"
+                            placeholder="••••"
+                            className="w-full h-14 px-4 rounded-md bg-slate-950 border border-slate-800 text-slate-100 text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600 font-mono"
                         />
                         <p className="text-xs text-slate-500">
-                            Your host provided you with a 4-digit PIN.
+                            The host provided you with a 4-digit PIN
                         </p>
                     </div>
 
-                    <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                        Enter Party
+                    <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white h-12">
+                        Enter Game
                     </Button>
                 </form>
             </div>
