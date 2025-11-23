@@ -47,9 +47,8 @@ ${idx + 1}. [${clue.timing}] ${clue.description}
 Be constructive but honest. Focus on making the mystery more engaging and interactive.`
 
         const { text } = await generateText({
-            model: openai('gpt-4o'),
+            model: openai('gpt-5.1'),
             prompt,
-            maxTokens: 1500,
         })
 
         return NextResponse.json({ analysis: text })
