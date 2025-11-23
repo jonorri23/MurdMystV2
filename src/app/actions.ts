@@ -188,9 +188,20 @@ export async function generateMystery(partyId: string) {
     })
 
     // 2. Call AI
+    const { data: partyWithAnalysis } = await supabase
+        .from('parties')
+        .select('venue_analysis')
+        .eq('id', partyId)
+        .single()
+
+    const venueContext = partyWithAnalysis?.venue_analysis
+        ? `\nVENUE ANALYSIS (CRITICAL: You MUST use these details for hiding spots. Do NOT invent furniture not listed here):\n${JSON.stringify(partyWithAnalysis.venue_analysis)}`
+        : ''
+
     const prompt = `
     Story/Theme: ${party.story_theme || party.name}
     Physical Venue: ${party.setting_description || 'A typical room'}
+    ${venueContext}
     Guests:
     ${guests.map(g => `- ${g.name} (${g.personality_notes || 'No notes'})`).join('\n')}
 Party Name: ${party.name}
@@ -203,7 +214,7 @@ ${guests.map(g => `- ${g.name}${g.personality_notes ? ` (${g.personality_notes})
 Generate a complete murder mystery with:
 - A victim and murder scenario
 - Character roles for ALL ${guests.length} guests (with relationships, quirks, opening actions)
-- Physical clue setup instructions for the host
+- Physical clue setup instructions for the host (STRICTLY USE VENUE ANALYSIS OBJECTS IF AVAILABLE)
 - In-app clues for during the game
 
 Make it dramatic, interactive, and perfectly tailored to this venue and theme!
@@ -224,7 +235,8 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
         .update({
             status: 'reviewing',
             victim: object.victim,
-            physical_clues: object.physicalClues
+            physical_clues: object.physicalClues,
+            intro: object.intro
         })
         .eq('id', partyId)
 
@@ -255,7 +267,7 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
 
         console.log(`Matched "${char.guestName}" → Guest "${guest.name}" (${guest.id})`);
 
-        // Generate portrait using gpt-image-1
+        // Generate portrait using dall-e-3
         let portraitUrl = null
         try {
             const OpenAI = (await import('openai')).default
@@ -263,13 +275,14 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
                 apiKey: process.env.OPENAI_API_KEY,
             })
 
-            const imagePrompt = `A portrait of ${char.roleName}, ${char.roleDescription}. ${party.story_theme || 'Mystery theme'}. Dramatic lighting, detailed face, professional character portrait.`
+            const imagePrompt = `A digital painting of a murder mystery character: ${char.roleName}, ${char.roleDescription}. ${party.story_theme || 'Mystery theme'}. Style: Oil painting, mysterious, noir. High quality, detailed.`
 
             const response = await client.images.generate({
-                model: 'gpt-image-1',
+                model: 'dall-e-3',
                 prompt: imagePrompt,
                 n: 1,
                 size: '1024x1024',
+                quality: 'standard',
             })
 
             portraitUrl = response.data?.[0]?.url || null
@@ -789,4 +802,97 @@ export async function regenerateAllPortraits(partyId: string) {
 
     const { revalidatePath } = await import('next/cache')
     revalidatePath(`/host/${partyId}/review`, 'page')
+}
+
+export async function analyzeVenue(formData: FormData) {
+    'use server'
+
+    const partyId = formData.get('partyId') as string
+    const files = formData.getAll('file') as File[]
+
+    if (!partyId || files.length === 0) throw new Error('Missing partyId or files')
+
+    // 1. Upload ALL images to Supabase
+    const uploadedUrls: string[] = []
+
+    for (const file of files) {
+        const fileName = `${partyId}/venue-${Date.now()}-${file.name}`
+        const { error: uploadError } = await supabase.storage
+            .from('venue_images')
+            .upload(fileName, file, { upsert: true })
+
+        let bucket = 'venue_images'
+        if (uploadError) {
+            console.error('Upload error (venue_images), trying portraits:', uploadError)
+            const { error: retryError } = await supabase.storage
+                .from('portraits')
+                .upload(fileName, file, { upsert: true })
+
+            if (retryError) {
+                console.error('Failed to upload image:', file.name)
+                continue // Skip this file
+            }
+            bucket = 'portraits'
+        }
+
+        const { data } = supabase.storage.from(bucket).getPublicUrl(fileName)
+        uploadedUrls.push(data.publicUrl)
+    }
+
+    if (uploadedUrls.length === 0) throw new Error('No images uploaded successfully')
+
+    // 2. Analyze with GPT-4o Vision (Send ALL images)
+    const { generateObject } = await import('ai')
+    const { openai } = await import('@ai-sdk/openai')
+    const { z } = await import('zod')
+
+    const schema = z.object({
+        roomType: z.string(),
+        keyObjects: z.array(z.string()).describe('List of distinct objects suitable for hiding clues (e.g., "Red Armchair", "Bookshelf", "Piano")'),
+        atmosphere: z.string().describe('The mood of the room (e.g., "Cozy", "Modern", "Spooky")'),
+        lightingSuggestion: z.string().describe('How to adjust lighting for a mystery'),
+        musicSuggestion: z.string().describe('Genre of music that fits the room'),
+        hidingSpots: z.array(z.object({
+            object: z.string(),
+            description: z.string(),
+            difficulty: z.enum(['easy', 'medium', 'hard'])
+        }))
+    })
+
+    const content: any[] = [
+        { type: 'text', text: 'Analyze these images of a party venue for a murder mystery. Identify furniture and objects that can be used to hide physical clues. Suggest atmosphere settings. Combine findings from all images.' }
+    ]
+
+    uploadedUrls.forEach(url => {
+        content.push({ type: 'image', image: url })
+    })
+
+    const { object } = await generateObject({
+        model: openai('gpt-4o'),
+        schema,
+        messages: [
+            {
+                role: 'user',
+                content
+            }
+        ]
+    })
+
+    // 3. Save to DB
+    const { data: party } = await supabase.from('parties').select('venue_images').eq('id', partyId).single()
+    const currentImages = party?.venue_images || []
+
+    await supabase
+        .from('parties')
+        .update({
+            venue_analysis: object,
+            venue_images: [...currentImages, ...uploadedUrls],
+            setting_description: `A ${object.atmosphere} ${object.roomType}. Key features: ${object.keyObjects.join(', ')}.`
+        })
+        .eq('id', partyId)
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/dashboard`)
+
+    return object
 }

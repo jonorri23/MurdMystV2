@@ -4,6 +4,9 @@ import { Toaster } from 'sonner'
 import { NotificationListener } from '@/components/NotificationListener'
 import { PhaseControl } from '@/components/PhaseControl'
 import { ShareLink } from '@/components/ShareLink'
+import { VenueUpload } from '@/components/VenueUpload'
+
+export const dynamic = 'force-dynamic'
 
 export default async function HostDashboard({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -104,6 +107,10 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                     <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
                         <h2 className="text-xl font-semibold mb-4 text-purple-400">Mystery Setup</h2>
 
+                        <div className="mb-6">
+                            <VenueUpload partyId={id} />
+                        </div>
+
                         <form action={async (formData) => {
                             'use server'
                             const { updatePartyDetails } = await import('@/app/actions')
@@ -126,6 +133,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                 <label className="text-sm font-medium text-slate-300">Physical Venue</label>
                                 <textarea
                                     name="venueDescription"
+                                    key={party.setting_description} // Force re-render when description updates
                                     rows={2}
                                     defaultValue={party.setting_description || ''}
                                     placeholder="e.g. My living room, a garden, basement with pool table"
@@ -164,7 +172,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                             <div className="prose prose-invert max-w-none">
                                 <h3 className="text-purple-400 uppercase tracking-wider text-sm font-bold mb-2">Read to Guests:</h3>
                                 <p className="text-lg leading-relaxed text-slate-200 bg-slate-950/50 p-6 rounded-lg border border-slate-800">
-                                    {party.setting_description}
+                                    {party.intro || party.setting_description}
                                 </p>
                             </div>
                         </div>
@@ -318,7 +326,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
 
                                     {char.portrait_url && (
                                         <div className="mb-3 rounded-lg overflow-hidden border border-slate-800">
-                                            <img src={char.portrait_url} alt={char.name} className="w-full h-32 object-cover" />
+                                            <img src={char.portrait_url} alt={char.name} className="w-full h-auto" />
                                         </div>
                                     )}
 
@@ -330,6 +338,11 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                             <p className="text-xs text-yellow-200">{char.opening_action}</p>
                                         </div>
                                     )}
+
+                                    <div className="mb-2">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Backstory & Motive</p>
+                                        <p className="text-xs text-slate-300 leading-relaxed">{char.backstory}</p>
+                                    </div>
 
                                     <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
                                         <span className={`font-bold ${isMurderer ? 'text-red-400' : 'text-slate-300'}`}>

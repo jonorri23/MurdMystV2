@@ -1,9 +1,13 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+
 export function ShareLink({ gameId }: { gameId: string }) {
-    const link = typeof window !== 'undefined'
-        ? `${window.location.origin}/join/${gameId}`
-        : `https://murdmyst.com/join/${gameId}`
+    const [link, setLink] = useState(`https://murdmyst.com/join/${gameId}`)
+
+    useEffect(() => {
+        setLink(`${window.location.origin}/join/${gameId}`)
+    }, [gameId])
 
     return (
         <div className="mt-6 p-4 bg-slate-950 rounded-lg border border-dashed border-slate-800">
