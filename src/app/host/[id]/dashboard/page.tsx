@@ -317,100 +317,102 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                 <ClueControl partyId={id} guests={guests || []} />
                             </form>
                         </div>
+                    </div>
 
-                        {/* Clue History */}
-                        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <h2 className="text-xl font-semibold mb-4 text-purple-400">Clue Timeline</h2>
-                            {events && events.length > 0 ? (
-                                <div className="space-y-3">
-                                    {events.map((event: any) => (
-                                        <div key={event.id} className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <p className="text-slate-200 text-sm flex-1">{event.content}</p>
-                                                <span className="text-xs text-slate-500 ml-4 whitespace-nowrap">
-                                                    {new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                            <div className="flex gap-1 flex-wrap">
-                                                {event.target_guest_ids ? (
-                                                    event.target_guest_ids.map((gid: string) => {
-                                                        const guest = guests?.find((g: any) => g.id === gid)
-                                                        const char = guest?.characters[0]
-                                                        return (
-                                                            <span key={gid} className="text-xs bg-purple-900/30 text-purple-300 px-2 py-0.5 rounded-full">
-                                                                {char?.name || guest?.name || 'Unknown'}
-                                                            </span>
-                                                        )
-                                                    })
-                                                ) : (
-                                                    <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                                                        All Guests
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-slate-500 text-sm text-center py-4">No clues sent yet.</p>
-                            )}
-                        </div>
 
-                        {/* Character List */}
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {guests?.map((guest: any) => {
-                                const char = guest.characters[0];
-                                if (!char) return null;
-                                const isMurderer = char.secret_objective.includes('MURDERER');
-                                return (
-                                    <div key={guest.id} className={`bg-slate-900 p-4 rounded-xl border ${isMurderer ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'}`}>
+                    {/* Clue History */}
+                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
+                        <h2 className="text-xl font-semibold mb-4 text-purple-400">Clue Timeline</h2>
+                        {events && events.length > 0 ? (
+                            <div className="space-y-3">
+                                {events.map((event: any) => (
+                                    <div key={event.id} className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                                         <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-bold text-white">{char.name}</h3>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-slate-500">{guest.name}</span>
-                                                    <code className="text-xs bg-slate-950 px-2 py-0.5 rounded text-purple-400 font-mono">PIN: {guest.access_pin}</code>
-                                                </div>
-                                            </div>
-                                            {isMurderer && (
-                                                <span className="bg-red-900/30 text-red-400 px-2 py-1 rounded text-xs font-medium border border-red-800/50">
-                                                    MURDERER
+                                            <p className="text-slate-200 text-sm flex-1">{event.content}</p>
+                                            <span className="text-xs text-slate-500 ml-4 whitespace-nowrap">
+                                                {new Date(event.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-1 flex-wrap">
+                                            {event.target_guest_ids ? (
+                                                event.target_guest_ids.map((gid: string) => {
+                                                    const guest = guests?.find((g: any) => g.id === gid)
+                                                    const char = guest?.characters[0]
+                                                    return (
+                                                        <span key={gid} className="text-xs bg-purple-900/30 text-purple-300 px-2 py-0.5 rounded-full">
+                                                            {char?.name || guest?.name || 'Unknown'}
+                                                        </span>
+                                                    )
+                                                })
+                                            ) : (
+                                                <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+                                                    All Guests
                                                 </span>
                                             )}
                                         </div>
-
-                                        {char.portrait_url && (
-                                            <div className="mb-3 rounded-lg overflow-hidden border border-slate-800">
-                                                <img src={char.portrait_url} alt={char.name} className="w-full h-auto" />
-                                            </div>
-                                        )}
-
-                                        <p className="text-sm text-purple-400 mb-2">{char.role}</p>
-
-                                        {char.opening_action && (
-                                            <div className="mb-2 bg-yellow-950/20 border-l-2 border-yellow-600 px-2 py-1">
-                                                <p className="text-[10px] text-yellow-500 font-bold uppercase">Opening Action</p>
-                                                <p className="text-xs text-yellow-200">{char.opening_action}</p>
-                                            </div>
-                                        )}
-
-                                        <div className="mb-2">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Backstory & Motive</p>
-                                            <p className="text-xs text-slate-300 leading-relaxed">{char.backstory}</p>
-                                        </div>
-
-                                        <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
-                                            <span className={`font-bold ${isMurderer ? 'text-red-400' : 'text-slate-300'}`}>
-                                                {isMurderer ? 'Secret Objective:' : 'Objective:'}
-                                            </span>
-                                            <p className="mt-1">{char.secret_objective}</p>
-                                        </div>
                                     </div>
-                                )
-                            })}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-slate-500 text-sm text-center py-4">No clues sent yet.</p>
+                        )}
                     </div>
-            )}
+
+                    {/* Character List */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {guests?.map((guest: any) => {
+                            const char = guest.characters[0];
+                            if (!char) return null;
+                            const isMurderer = char.secret_objective.includes('MURDERER');
+                            return (
+                                <div key={guest.id} className={`bg-slate-900 p-4 rounded-xl border ${isMurderer ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h3 className="font-bold text-white">{char.name}</h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-slate-500">{guest.name}</span>
+                                                <code className="text-xs bg-slate-950 px-2 py-0.5 rounded text-purple-400 font-mono">PIN: {guest.access_pin}</code>
+                                            </div>
+                                        </div>
+                                        {isMurderer && (
+                                            <span className="bg-red-900/30 text-red-400 px-2 py-1 rounded text-xs font-medium border border-red-800/50">
+                                                MURDERER
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {char.portrait_url && (
+                                        <div className="mb-3 rounded-lg overflow-hidden border border-slate-800">
+                                            <img src={char.portrait_url} alt={char.name} className="w-full h-auto" />
+                                        </div>
+                                    )}
+
+                                    <p className="text-sm text-purple-400 mb-2">{char.role}</p>
+
+                                    {char.opening_action && (
+                                        <div className="mb-2 bg-yellow-950/20 border-l-2 border-yellow-600 px-2 py-1">
+                                            <p className="text-[10px] text-yellow-500 font-bold uppercase">Opening Action</p>
+                                            <p className="text-xs text-yellow-200">{char.opening_action}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="mb-2">
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase mb-0.5">Backstory & Motive</p>
+                                        <p className="text-xs text-slate-300 leading-relaxed">{char.backstory}</p>
+                                    </div>
+
+                                    <div className="text-xs text-slate-400 bg-slate-950 p-2 rounded border border-slate-800">
+                                        <span className={`font-bold ${isMurderer ? 'text-red-400' : 'text-slate-300'}`}>
+                                            {isMurderer ? 'Secret Objective:' : 'Objective:'}
+                                        </span>
+                                        <p className="mt-1">{char.secret_objective}</p>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
-            );
+            )}
+        </div>
+    );
 }
