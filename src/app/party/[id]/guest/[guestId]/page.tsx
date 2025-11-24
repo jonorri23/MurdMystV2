@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import { Toaster } from 'sonner'
 import { NotificationListener } from '@/components/NotificationListener'
+import { ClueCodeEntry } from '@/components/ClueCodeEntry';
 
 export default async function GuestDashboard({ params }: { params: Promise<{ id: string; guestId: string }> }) {
     const { id, guestId } = await params;
@@ -57,7 +58,6 @@ export default async function GuestDashboard({ params }: { params: Promise<{ id:
             <NotificationListener partyId={id} guestId={guestId} />
 
             <header className="flex justify-between items-center mb-8">
-                {/* ... existing header ... */}
                 <div>
                     <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                         {party.name}
@@ -184,6 +184,9 @@ export default async function GuestDashboard({ params }: { params: Promise<{ id:
                         </div>
                     </div>
                 )}
+
+                {/* Physical Clue Unlock */}
+                <ClueCodeEntry partyId={id} guestId={guestId} />
 
                 {/* Status Updates / Clues Feed */}
                 <div className="space-y-4">

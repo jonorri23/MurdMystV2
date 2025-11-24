@@ -6,8 +6,6 @@ import { redirect } from 'next/navigation'
 export async function createParty(formData: FormData) {
     const name = formData.get('name') as string
     const hostPin = formData.get('hostPin') as string
-    const venueDescription = formData.get('venueDescription') as string
-    const storyTheme = formData.get('storyTheme') as string
 
     if (!name || !hostPin) {
         throw new Error('Name and Host PIN are required')
@@ -20,8 +18,12 @@ export async function createParty(formData: FormData) {
                 name,
                 host_pin: hostPin,
                 status: 'planning',
-                setting_description: venueDescription || 'A typical room',
-                story_theme: storyTheme || 'A classic murder mystery'
+                // Defaults for other fields
+                setting_description: 'A typical room',
+                story_theme: 'A classic murder mystery',
+                target_duration: '60-90 minutes',
+                complexity: 'balanced',
+                min_solution_paths: 2
             },
         ])
         .select()
@@ -178,13 +180,42 @@ export async function generateMystery(partyId: string) {
             setupInstruction: z.string().describe('Where and how to place it in the venue'),
             content: z.string().describe('The actual text/appearance of the clue'),
             timing: z.enum(['pre-dinner', 'post-murder']).describe('When it should be found'),
-            relatedTo: z.array(z.string()).describe('Character role names this clue relates to')
+            relatedTo: z.array(z.string()).describe('Character role names this clue relates to'),
+            hasUnlockCode: z.boolean().describe('Whether this clue has a PIN to unlock digital content'),
+            unlockCode: z.string().nullable().describe('4-digit PIN code printed on the physical clue'),
+            unlockedContent: z.object({
+                type: z.enum(['clue', 'message', 'reveal']),
+                content: z.string(),
+                broadcastToAll: z.boolean().describe('If true, sends message to all players')
+            }).nullable()
         })).describe('Physical clues for the host to set up'),
         clues: z.array(z.object({
             content: z.string(),
             suggestedTiming: z.string(),
             targetRoles: z.array(z.string())
-        })).describe('In-app clues that appear during the game')
+        })).describe('In-app clues that appear during the game'),
+        solutionMetadata: z.object({
+            completeSolution: z.object({
+                steps: z.array(z.string()),
+                estimatedTime: z.string(),
+                criticalClues: z.array(z.string())
+            }),
+            alternativePaths: z.array(z.object({
+                description: z.string(),
+                clues: z.array(z.string()),
+                estimatedTime: z.string()
+            })),
+            timeline: z.object({
+                murderTime: z.string(),
+                bodyDiscovery: z.string(),
+                eventSequence: z.array(z.string())
+            }),
+            difficultyRating: z.enum(['easy', 'medium', 'hard']),
+            redHerrings: z.array(z.object({
+                element: z.string(),
+                purpose: z.string()
+            }))
+        })
     })
 
     // 2. Call AI
@@ -208,6 +239,11 @@ Party Name: ${party.name}
 Theme: ${party.story_theme || 'murder mystery'}
 Physical Venue: ${party.setting_description || 'a house'}
 
+PLANNING CONSTRAINTS:
+- Target Duration: ${party.target_duration || '60-90 minutes'}
+- Complexity Level: ${party.complexity || 'balanced'}
+- Minimum Solution Paths: ${party.min_solution_paths || 2} (Ensure there are at least this many valid ways to deduce the killer)
+
 Guests (${guests.length}):
 ${guests.map(g => `- ${g.name}${g.personality_notes ? ` (${g.personality_notes})` : ''}`).join('\n')}
 
@@ -216,6 +252,7 @@ Generate a complete murder mystery with:
 - Character roles for ALL ${guests.length} guests (with relationships, quirks, opening actions)
 - Physical clue setup instructions for the host (STRICTLY USE VENUE ANALYSIS OBJECTS IF AVAILABLE)
 - In-app clues for during the game
+- A solution that respects the complexity and duration constraints
 
 Make it dramatic, interactive, and perfectly tailored to this venue and theme!
   `
@@ -236,9 +273,37 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
             status: 'reviewing',
             victim: object.victim,
             physical_clues: object.physicalClues,
-            intro: object.intro
+            intro: object.intro,
+            solution_metadata: object.solutionMetadata
         })
         .eq('id', partyId)
+
+    // Save Physical Clue PIN Codes
+    const pinCodeInserts = object.physicalClues
+        .map((clue, index) => {
+            if (clue.hasUnlockCode && clue.unlockCode && clue.unlockedContent) {
+                return {
+                    party_id: partyId,
+                    clue_index: index,
+                    unlock_code: clue.unlockCode,
+                    unlocked_content: clue.unlockedContent,
+                    broadcast_to_all: clue.unlockedContent.broadcastToAll || false
+                }
+            }
+            return null
+        })
+        .filter(Boolean)
+
+    if (pinCodeInserts.length > 0) {
+        // Clear existing codes for this party first (in case of regeneration)
+        await supabase.from('physical_clue_codes').delete().eq('party_id', partyId)
+
+        const { error: pinError } = await supabase
+            .from('physical_clue_codes')
+            .insert(pinCodeInserts as any)
+
+        if (pinError) console.error('Error inserting PIN codes:', pinError)
+    }
 
     // Create Characters and Generate Portraits
     console.log('=== MATCHING GUESTS TO CHARACTERS ===');
@@ -422,12 +487,20 @@ export async function updatePartyDetails(formData: FormData) {
     const partyId = formData.get("partyId") as string
     const storyTheme = formData.get("storyTheme") as string
     const venueDescription = formData.get("venueDescription") as string
+    const availableProps = formData.get("availableProps") as string
+    const targetDuration = formData.get("targetDuration") as string
+    const complexity = formData.get("complexity") as string
+    const minPaths = formData.get("minPaths") as string
 
     await supabase
         .from("parties")
         .update({
             story_theme: storyTheme,
-            setting_description: venueDescription
+            setting_description: venueDescription,
+            available_props: availableProps,
+            target_duration: targetDuration,
+            complexity: complexity,
+            min_solution_paths: minPaths ? parseInt(minPaths) : 2
         })
         .eq("id", partyId)
 
@@ -804,6 +877,73 @@ export async function regenerateAllPortraits(partyId: string) {
     revalidatePath(`/host/${partyId}/review`, 'page')
 }
 
+export async function unlockClueCode(formData: FormData) {
+    'use server'
+
+    const partyId = formData.get('partyId') as string
+    const guestId = formData.get('guestId') as string
+    const code = formData.get('code') as string
+
+    if (!partyId || !guestId || !code) {
+        return { success: false, message: 'Missing required fields' }
+    }
+
+    // 1. Find matching code
+    const { data: clueCode } = await supabase
+        .from('physical_clue_codes')
+        .select('*')
+        .eq('party_id', partyId)
+        .eq('unlock_code', code)
+        .single()
+
+    if (!clueCode) {
+        return { success: false, message: 'Invalid code' }
+    }
+
+    // 2. Check if already unlocked by this guest
+    const { data: existing } = await supabase
+        .from('clue_unlocks')
+        .select('*')
+        .eq('clue_code_id', clueCode.id)
+        .eq('unlocked_by_guest_id', guestId)
+        .single()
+
+    if (existing) {
+        return { success: true, alreadyUnlocked: true, content: clueCode.unlocked_content }
+    }
+
+    // 3. Record unlock
+    await supabase.from('clue_unlocks').insert({
+        party_id: partyId,
+        clue_code_id: clueCode.id,
+        unlocked_by_guest_id: guestId
+    })
+
+    // 4. Send the content as a game event
+    const content = clueCode.unlocked_content
+    const messageContent = `[UNLOCKED CLUE] ${content.content}`
+
+    // If broadcast, send to all. If not, send ONLY to this guest.
+    const targetGuestIds = clueCode.broadcast_to_all ? null : [guestId]
+
+    await supabase
+        .from('game_events')
+        .insert([
+            {
+                party_id: partyId,
+                event_type: 'clue',
+                content: messageContent,
+                trigger_time: new Date().toISOString(),
+                target_guest_ids: targetGuestIds,
+            }
+        ])
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/party/${partyId}/guest/${guestId}`)
+
+    return { success: true, content: clueCode.unlocked_content }
+}
+
 export async function analyzeVenue(formData: FormData) {
     'use server'
 
@@ -848,19 +988,43 @@ export async function analyzeVenue(formData: FormData) {
 
     const schema = z.object({
         roomType: z.string(),
-        keyObjects: z.array(z.string()).describe('List of distinct objects suitable for hiding clues (e.g., "Red Armchair", "Bookshelf", "Piano")'),
+        keyObjects: z.array(z.object({
+            name: z.string().describe('Object name (e.g., "Red Leather Armchair")'),
+            location: z.string().describe('Where in room (e.g., "North wall, left of window")'),
+            hidingPotential: z.enum(['high', 'medium', 'low']).describe('How good for hiding clues'),
+            clueTypes: z.array(z.string()).describe('What could be hidden here (letter, weapon, photo, etc.)')
+        })).describe('List of distinct objects suitable for hiding clues'),
         atmosphere: z.string().describe('The mood of the room (e.g., "Cozy", "Modern", "Spooky")'),
         lightingSuggestion: z.string().describe('How to adjust lighting for a mystery'),
         musicSuggestion: z.string().describe('Genre of music that fits the room'),
         hidingSpots: z.array(z.object({
             object: z.string(),
+            specificLocation: z.string().describe('Exact spot (e.g., "Under cushion", "Behind books")'),
             description: z.string(),
-            difficulty: z.enum(['easy', 'medium', 'hard'])
-        }))
+            difficulty: z.enum(['easy', 'medium', 'hard']),
+            accessibility: z.string().describe('Who can reach it easily'),
+            suggestedClueTypes: z.array(z.string())
+        })),
+        detectableProps: z.array(z.object({
+            item: z.string(),
+            potential: z.string().describe('How this could be used in mystery')
+        })).optional().describe('Any specific props or interesting items found in the images')
     })
 
     const content: any[] = [
-        { type: 'text', text: 'Analyze these images of a party venue for a murder mystery. Identify furniture and objects that can be used to hide physical clues. Suggest atmosphere settings. Combine findings from all images.' }
+        {
+            type: 'text',
+            text: `Analyze these images of a party venue for a murder mystery. 
+            
+            CRITICAL REQUIREMENTS:
+            1. Identify EVERY distinct object that could hide a clue (furniture, decorations, appliances, etc.)
+            2. For each object, describe SPECIFIC hiding locations (not just "bookshelf" but "bookshelf, behind books on middle shelf")
+            3. Categorize by difficulty (easy = obvious spots, hard = clever hiding places)
+            4. Suggest what TYPE of clue fits each spot (paper clue, small object, weapon, etc.)
+            5. Detect any existing props or themed items visible in images
+            
+            Think like a mystery game designer - where would YOU hide clues in this space?`
+        }
     ]
 
     uploadedUrls.forEach(url => {
@@ -882,12 +1046,17 @@ export async function analyzeVenue(formData: FormData) {
     const { data: party } = await supabase.from('parties').select('venue_images').eq('id', partyId).single()
     const currentImages = party?.venue_images || []
 
+    // Generate descriptions for auto-population
+    const venueDescription = `A ${object.atmosphere} ${object.roomType}. Key features: ${object.keyObjects.map(o => o.name).join(', ')}.`
+    const availableProps = object.detectableProps?.map(p => p.item).join(', ') || ''
+
     await supabase
         .from('parties')
         .update({
             venue_analysis: object,
             venue_images: [...currentImages, ...uploadedUrls],
-            setting_description: `A ${object.atmosphere} ${object.roomType}. Key features: ${object.keyObjects.join(', ')}.`
+            setting_description: venueDescription,
+            available_props: availableProps
         })
         .eq('id', partyId)
 

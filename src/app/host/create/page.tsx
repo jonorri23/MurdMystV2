@@ -49,38 +49,6 @@ export default function CreatePartyPage() {
                         </p>
                     </div>
 
-                    <div className="space-y-2">
-                        <label htmlFor="storyTheme" className="text-sm font-medium text-slate-300">
-                            Story/Theme
-                        </label>
-                        <textarea
-                            id="storyTheme"
-                            name="storyTheme"
-                            rows={3}
-                            placeholder='e.g. "Pokemon", "1920s Gatsby party", "Sci-fi space station"...'
-                            className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600 resize-none"
-                        />
-                        <p className="text-xs text-slate-500">
-                            Describe the story theme or just name it. The AI will build a full mystery around it.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label htmlFor="venueDescription" className="text-sm font-medium text-slate-300">
-                            Physical Venue (Optional)
-                        </label>
-                        <textarea
-                            id="venueDescription"
-                            name="venueDescription"
-                            rows={3}
-                            placeholder="e.g. My living room, a garden, a basement, John's apartment with a piano..."
-                            className="w-full p-3 rounded-md bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent placeholder:text-slate-600 resize-none"
-                        />
-                        <p className="text-xs text-slate-500">
-                            Describe the REAL location where you're playing. AI will use this for clues.
-                        </p>
-                    </div>
-
                     <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                         Start Planning
                     </Button>

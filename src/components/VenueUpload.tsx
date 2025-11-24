@@ -125,15 +125,86 @@ export function VenueUpload({ partyId, onAnalysisComplete }: { partyId: string, 
                     </button>
                 )}
 
-                {/* Debug / Result Display */}
+                {/* Full Analysis Display */}
                 {analysisResult && (
-                    <div className="bg-slate-950 p-4 rounded-md border border-slate-800 text-xs font-mono text-slate-300 mt-4">
-                        <p className="font-bold text-purple-400 mb-2">Analysis Result (Debug):</p>
-                        <div className="space-y-1">
-                            <p><span className="text-slate-500">Room:</span> {analysisResult.roomType}</p>
-                            <p><span className="text-slate-500">Mood:</span> {analysisResult.atmosphere}</p>
-                            <p><span className="text-slate-500">Objects:</span> {analysisResult.keyObjects.join(', ')}</p>
+                    <div className="bg-slate-950 p-6 rounded-lg border border-slate-800 mt-4 space-y-4 max-h-96 overflow-y-auto">
+                        <div className="flex items-center justify-between sticky top-0 bg-slate-950 pb-2">
+                            <p className="font-bold text-purple-400 text-sm uppercase tracking-wide">🔍 Full Venue Analysis</p>
+                            <span className="text-xs text-green-400">✓ Auto-populated fields below</span>
                         </div>
+
+                        {/* Room Overview */}
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase">Room Overview</h4>
+                            <div className="bg-slate-900 p-3 rounded text-sm">
+                                <p><span className="text-purple-400 font-medium">Type:</span> {analysisResult.roomType}</p>
+                                <p><span className="text-purple-400 font-medium">Atmosphere:</span> {analysisResult.atmosphere}</p>
+                                <p><span className="text-purple-400 font-medium">Lighting:</span> {analysisResult.lightingSuggestion}</p>
+                                <p><span className="text-purple-400 font-medium">Music:</span> {analysisResult.musicSuggestion}</p>
+                            </div>
+                        </div>
+
+                        {/* Key Objects */}
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase">Key Objects ({analysisResult.keyObjects.length})</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                                {analysisResult.keyObjects.map((obj: any, idx: number) => (
+                                    <div key={idx} className="bg-slate-900 p-2 rounded text-xs">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="font-medium text-white">{obj.name}</span>
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${obj.hidingPotential === 'high' ? 'bg-green-900/30 text-green-400' :
+                                                    obj.hidingPotential === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                        'bg-slate-800 text-slate-400'
+                                                }`}>
+                                                {obj.hidingPotential}
+                                            </span>
+                                        </div>
+                                        <p className="text-slate-400 text-[10px]">📍 {obj.location}</p>
+                                        <p className="text-slate-500 text-[10px] mt-1">💡 {obj.clueTypes.join(', ')}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Hiding Spots */}
+                        {analysisResult.hidingSpots && analysisResult.hidingSpots.length > 0 && (
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase">Hiding Spots ({analysisResult.hidingSpots.length})</h4>
+                                <div className="space-y-2">
+                                    {analysisResult.hidingSpots.map((spot: any, idx: number) => (
+                                        <div key={idx} className="bg-slate-900 p-2 rounded text-xs border-l-2 border-purple-600">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="font-medium text-white">{spot.object}</span>
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${spot.difficulty === 'easy' ? 'bg-blue-900/30 text-blue-400' :
+                                                        spot.difficulty === 'medium' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                            'bg-red-900/30 text-red-400'
+                                                    }`}>
+                                                    {spot.difficulty}
+                                                </span>
+                                            </div>
+                                            <p className="text-purple-300 text-[10px] font-medium">🔎 {spot.specificLocation}</p>
+                                            <p className="text-slate-400 text-[10px] mt-1">{spot.description}</p>
+                                            <p className="text-slate-500 text-[10px] mt-1">Suggested: {spot.suggestedClueTypes.join(', ')}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Detected Props */}
+                        {analysisResult.detectableProps && analysisResult.detectableProps.length > 0 && (
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-bold text-slate-400 uppercase">Detected Props ({analysisResult.detectableProps.length})</h4>
+                                <div className="bg-slate-900 p-3 rounded space-y-2">
+                                    {analysisResult.detectableProps.map((prop: any, idx: number) => (
+                                        <div key={idx} className="text-xs">
+                                            <span className="text-green-400 font-medium">✓ {prop.item}</span>
+                                            <p className="text-slate-500 text-[10px] ml-3">{prop.potential}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
