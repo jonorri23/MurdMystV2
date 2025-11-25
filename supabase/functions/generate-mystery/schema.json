@@ -1,0 +1,248 @@
+{
+    "type": "object",
+    "required": [
+        "title",
+        "intro",
+        "victim",
+        "characters",
+        "physicalClues",
+        "clues",
+        "solutionMetadata"
+    ],
+    "properties": {
+        "title": {
+            "type": "string",
+            "description": "The mystery title"
+        },
+        "intro": {
+            "type": "string",
+            "description": "The opening scene description"
+        },
+        "victim": {
+            "type": "object",
+            "required": [
+                "name",
+                "role",
+                "causeOfDeath",
+                "timeOfDeath",
+                "location",
+                "backstory"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "causeOfDeath": {
+                    "type": "string"
+                },
+                "timeOfDeath": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "backstory": {
+                    "type": "string"
+                }
+            }
+        },
+        "characters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "guestName",
+                    "roleName",
+                    "roleDescription",
+                    "backstory",
+                    "secret",
+                    "objective",
+                    "isMurderer"
+                ],
+                "properties": {
+                    "guestName": {
+                        "type": "string"
+                    },
+                    "roleName": {
+                        "type": "string"
+                    },
+                    "roleDescription": {
+                        "type": "string"
+                    },
+                    "backstory": {
+                        "type": "string"
+                    },
+                    "secret": {
+                        "type": "string"
+                    },
+                    "objective": {
+                        "type": "string"
+                    },
+                    "isMurderer": {
+                        "type": "boolean"
+                    },
+                    "relationships": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "character": {
+                                    "type": "string"
+                                },
+                                "relationship": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "quirks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "openingAction": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "physicalClues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string"
+                    },
+                    "setupInstruction": {
+                        "type": "string"
+                    },
+                    "content": {
+                        "type": "string"
+                    },
+                    "timing": {
+                        "type": "string",
+                        "enum": [
+                            "pre-dinner",
+                            "post-murder"
+                        ]
+                    },
+                    "relatedTo": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "clues": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string"
+                    },
+                    "suggestedTiming": {
+                        "type": "string"
+                    },
+                    "targetRoles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "solutionMetadata": {
+            "type": "object",
+            "properties": {
+                "completeSolution": {
+                    "type": "object",
+                    "properties": {
+                        "steps": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "estimatedTime": {
+                            "type": "string"
+                        },
+                        "criticalClues": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "alternativePaths": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string"
+                            },
+                            "clues": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "estimatedTime": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "timeline": {
+                    "type": "object",
+                    "properties": {
+                        "murderTime": {
+                            "type": "string"
+                        },
+                        "bodyDiscovery": {
+                            "type": "string"
+                        },
+                        "eventSequence": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "difficultyRating": {
+                    "type": "string",
+                    "enum": [
+                        "easy",
+                        "medium",
+                        "hard"
+                    ]
+                },
+                "redHerrings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "element": {
+                                "type": "string"
+                            },
+                            "purpose": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
