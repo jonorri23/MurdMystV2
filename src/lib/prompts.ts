@@ -59,6 +59,12 @@ Each character object MUST have:
 - **"quirks"**: Array of behavioral quirks/props.
 - **"openingAction"**: A specific dramatic action to start.
 
+**CRITICAL VALIDATION RULES:**
+- Generate EXACTLY ONE character per guest - NO DUPLICATES!
+- EVERY character MUST include ALL fields listed above - NO PARTIAL OBJECTS!
+- The "backstory" field must be COMPLETE, not truncated.
+- Verify you have the correct number of characters before returning.
+
 ---
 
 ## PHYSICAL CLUE INSTRUCTIONS

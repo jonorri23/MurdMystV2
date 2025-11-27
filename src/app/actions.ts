@@ -264,6 +264,38 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
         schema: schema,
     })
 
+    // Filter out any incomplete characters (missing required fields)
+    // This handles cases where the AI generates partial/duplicate characters
+    const validCharacters = object.characters.filter((char: any) => {
+        const hasAllRequiredFields =
+            char.guestName &&
+            char.roleName &&
+            char.roleDescription &&
+            char.backstory &&
+            char.secret &&
+            char.objective &&
+            typeof char.isMurderer === 'boolean' &&
+            Array.isArray(char.relationships) &&
+            Array.isArray(char.quirks) &&
+            char.openingAction;
+
+        if (!hasAllRequiredFields) {
+            console.warn(`Filtering out incomplete character: ${char.roleName || 'unknown'} for guest ${char.guestName || 'unknown'}`);
+        }
+
+        return hasAllRequiredFields;
+    });
+
+    // Update the object with filtered characters
+    object.characters = validCharacters;
+
+    // Validate we have enough characters
+    if (validCharacters.length !== guests.length) {
+        console.error(`Warning: Generated ${validCharacters.length} valid characters but expected ${guests.length}`);
+        // Optionally throw an error if this is critical
+        // throw new Error(`AI generated incomplete characters. Expected ${guests.length}, got ${validCharacters.length} valid ones.`);
+    }
+
     // 3. Save to Database
     // Update Party to reviewing status (not active yet!)
     // Update Party status to 'reviewing' and save victim info and physical clues
@@ -956,20 +988,28 @@ export async function analyzeVenue(formData: FormData) {
     const uploadedUrls: string[] = []
 
     for (const file of files) {
+        const fileBuffer = Buffer.from(await file.arrayBuffer())
         const fileName = `${partyId}/venue-${Date.now()}-${file.name}`
+
         const { error: uploadError } = await supabase.storage
             .from('venue_images')
-            .upload(fileName, file, { upsert: true })
+            .upload(fileName, fileBuffer, {
+                upsert: true,
+                contentType: file.type
+            })
 
         let bucket = 'venue_images'
         if (uploadError) {
             console.error('Upload error (venue_images), trying portraits:', uploadError)
             const { error: retryError } = await supabase.storage
                 .from('portraits')
-                .upload(fileName, file, { upsert: true })
+                .upload(fileName, fileBuffer, {
+                    upsert: true,
+                    contentType: file.type
+                })
 
             if (retryError) {
-                console.error('Failed to upload image:', file.name)
+                console.error('Failed to upload image:', file.name, retryError)
                 continue // Skip this file
             }
             bucket = 'portraits'
