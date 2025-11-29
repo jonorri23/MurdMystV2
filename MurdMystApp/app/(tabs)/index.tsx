@@ -143,30 +143,29 @@ export default function Dashboard() {
               <Text className="text-slate-500 text-center">
                 No parties yet. Start hosting!
               </Text>
-              </Text>
-              <Button 
-                title={loading ? "Creating..." : "Create Party"} 
+              <Button
+                title={loading ? "Creating..." : "Create Party"}
                 onPress={createInstantParty}
                 loading={loading}
               />
             </View>
-  ) : null
-}
-renderItem = {({ item }) => (
-  <Link href={`/host/${item.id}/dashboard`} asChild>
-    <TouchableOpacity className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
-      <View>
-        <Text className="text-lg font-bold text-slate-900 dark:text-white">
-          {item.name}
-        </Text>
-        <Text className="text-slate-500 text-sm">
-          {item.status.toUpperCase()} • {new Date(item.created_at).toLocaleDateString()}
-        </Text>
-      </View>
-      <ChevronRight size={20} color="#94a3b8" />
-    </TouchableOpacity>
-  </Link>
-)}
+          ) : null
+        }
+        renderItem={({ item }) => (
+          <Link href={`/host/${item.id}/dashboard`} asChild>
+            <TouchableOpacity className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
+              <View>
+                <Text className="text-lg font-bold text-slate-900 dark:text-white">
+                  {item.name}
+                </Text>
+                <Text className="text-slate-500 text-sm">
+                  {item.status.toUpperCase()} • {new Date(item.created_at).toLocaleDateString()}
+                </Text>
+              </View>
+              <ChevronRight size={20} color="#94a3b8" />
+            </TouchableOpacity>
+          </Link>
+        )}
       />
     </SafeAreaView >
   );
