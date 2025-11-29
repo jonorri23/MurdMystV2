@@ -27,7 +27,7 @@ serve(async (req) => {
         const content: any[] = [
             {
                 type: 'text',
-                text: `Analyze these images of a party venue for a murder mystery. 
+                text: `Analyze these images of a party venue for a murder mystery. Return your response as a JSON object.
             
             CRITICAL REQUIREMENTS:
             1. Identify EVERY distinct object that could hide a clue (furniture, decorations, appliances, etc.)
