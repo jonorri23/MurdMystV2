@@ -27,7 +27,7 @@ export default function PartyDashboard() {
     const [venueDescription, setVenueDescription] = useState('');
     const [duration, setDuration] = useState('60-90m');
     const [complexity, setComplexity] = useState('balanced');
-    const [showSettings, setShowSettings] = useState(false);
+    const [showSettings, setShowSettings] = useState(true);
 
     async function fetchPartyDetails() {
         const { data: partyData, error: partyError } = await supabase

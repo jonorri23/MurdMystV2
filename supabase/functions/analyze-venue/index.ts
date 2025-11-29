@@ -89,15 +89,13 @@ Return your response as a valid JSON object with this structure:
         const uniqueImages = [...new Set([...currentImages, ...imageUrls])]
 
         const venueDescription = `A ${analysis.atmosphere} ${analysis.roomType}. Key features: ${analysis.keyObjects.map((o: any) => o.name).join(', ')}.`
-        const availableProps = analysis.detectableProps?.map((p: any) => p.item).join(', ') || ''
 
         const { error: updateError } = await supabase
             .from('parties')
             .update({
                 venue_analysis: analysis,
                 venue_images: uniqueImages,
-                setting_description: venueDescription,
-                available_props: availableProps
+                setting_description: venueDescription
             })
             .eq('id', partyId)
 
