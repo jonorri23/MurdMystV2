@@ -876,18 +876,16 @@ export async function regenerateAllPortraits(partyId: string) {
                 model: 'dall-e-3',
                 prompt: imagePrompt,
                 n: 1,
-                contentType: 'image/png',
-                upsert: true
+                size: '1024x1024',
+                quality: 'standard'
             })
 
-            if (!uploadError) {
-                const { data: { publicUrl } } = supabase.storage
-                    .from('portraits')
-                    .getPublicUrl(fileName)
+            const portraitUrl = response.data?.[0]?.url || null
 
+            if (portraitUrl) {
                 await supabase
                     .from('characters')
-                    .update({ portrait_url: publicUrl })
+                    .update({ portrait_url: portraitUrl })
                     .eq('id', char.id)
             }
         } catch (e) {

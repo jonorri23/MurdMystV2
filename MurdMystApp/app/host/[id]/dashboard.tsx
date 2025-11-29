@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Share, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Share, ActivityIndicator } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, Link, Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, MapPin, Sparkles, Copy, Share2, UserPlus, Trash2, X, LogOut, Settings, BookOpen, Clock, Brain } from 'lucide-react-native';
@@ -142,6 +143,11 @@ export default function PartyDashboard() {
         }
     };
 
+    const copyGameId = async () => {
+        await Clipboard.setStringAsync(id as string);
+        Alert.alert('Copied!', 'Game ID copied to clipboard');
+    };
+
     const saveSettings = async () => {
         const { error } = await supabase
             .from('parties')
@@ -247,6 +253,23 @@ export default function PartyDashboard() {
                             </Text>
                         </View>
                     </View>
+                </View>
+
+                {/* Game ID Card */}
+                <View className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 mb-6">
+                    <Text className="text-slate-500 dark:text-slate-400 font-medium mb-2">Game ID</Text>
+                    <View className="flex-row items-center justify-between">
+                        <Text className="text-slate-900 dark:text-white font-mono text-base flex-1">
+                            {id}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={copyGameId}
+                            className="bg-indigo-600 p-3 rounded-lg ml-2"
+                        >
+                            <Copy size={18} color="white" />
+                        </TouchableOpacity>
+                    </View>
+                    <Text className="text-xs text-slate-400 mt-2">Share this ID with guests for direct access</Text>
                 </View>
 
                 {/* Party Settings Card */}
