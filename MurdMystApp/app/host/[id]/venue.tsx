@@ -48,8 +48,9 @@ export default function VenueAnalysis() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
-            quality: 0.8,
+            quality: 0.5,
             base64: true,
+            allowsEditing: false, // Multi-select doesn't support editing, but we can resize
         });
 
         if (!result.canceled) {
