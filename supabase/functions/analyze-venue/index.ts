@@ -24,35 +24,25 @@ serve(async (req) => {
 
         const openaiKey = Deno.env.get('OPENAI_API_KEY')!
 
-        const systemPrompt = `Analyze these images of a party venue for a murder mystery. 
+        const content: any[] = [
+            {
+                type: 'text',
+                text: `Analyze these images of a party venue for a murder mystery. 
             
             CRITICAL REQUIREMENTS:
             1. Identify EVERY distinct object that could hide a clue (furniture, decorations, appliances, etc.)
             2. For each object, describe SPECIFIC hiding locations (not just "bookshelf" but "bookshelf, behind books on middle shelf")
             3. Categorize by difficulty (easy = obvious spots, hard = clever hiding places)
-            4. Suggest specific clue types that fit each spot (e.g., "small note", "key", "folded paper")
-
-Return your response as a valid JSON object with this structure:
-{
-    "roomType": "string (e.g., living room, dining room)",
-    "keyObjects": [
-        { "name": "string", "location": "string", "hidingPotential": "high|medium|low", "clueTypes": ["string"] }
-    ],
-    "atmosphere": "string (describe the mood/vibe)",
-    "lightingSuggestion": "string",
-    "musicSuggestion": "string",
-    "hidingSpots": [
-        { "object": "string", "specificLocation": "string", "description": "string", "difficulty": "easy|medium|hard", "accessibility": "string", "suggestedClueTypes": ["string"] }
-    ],
-    "detectableProps": [
-        { "item": "string", "potential": "string" }
-    ]
-}`
-
-        const content: any[] = [
-            { type: 'text', text: systemPrompt },
-            ...imageUrls.map((url: string) => ({ type: 'image_url', image_url: { url } }))
+            4. Suggest what TYPE of clue fits each spot (paper clue, small object, weapon, etc.)
+            5. Detect any existing props or themed items visible in images
+            
+            Think like a mystery game designer - where would YOU hide clues in this space?`
+            }
         ]
+
+        imageUrls.forEach((url: string) => {
+            content.push({ type: 'image', image: url })
+        })
 
         console.log('Calling OpenAI Vision API...')
 

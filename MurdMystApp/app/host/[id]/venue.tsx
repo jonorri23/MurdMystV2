@@ -92,18 +92,17 @@ export default function VenueAnalysis() {
         try {
             // 1. Upload images
             for (const image of images) {
+                if (!image.base64) continue;
+
                 const fileName = `venue-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
                 const filePath = `${id}/${fileName}`;
-
-                // Use fetch to get blob instead of base64 decode
-                const response = await fetch(image.uri);
-                const blob = await response.blob();
+                const fileData = decode(image.base64);
 
                 let bucket = 'venue_images';
 
                 const { error: uploadError } = await supabase.storage
                     .from(bucket)
-                    .upload(filePath, blob, {
+                    .upload(filePath, fileData, {
                         contentType: 'image/jpeg',
                         upsert: false
                     });
@@ -114,7 +113,7 @@ export default function VenueAnalysis() {
                     bucket = 'portraits';
                     const { error: retryError } = await supabase.storage
                         .from(bucket)
-                        .upload(filePath, blob, {
+                        .upload(filePath, fileData, {
                             contentType: 'image/jpeg',
                             upsert: false
                         });
