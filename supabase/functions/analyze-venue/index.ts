@@ -24,7 +24,13 @@ serve(async (req) => {
 
         const openaiKey = Deno.env.get('OPENAI_API_KEY')!
 
-        const systemPrompt = `Analyze these venue images for a murder mystery party. Identify hiding spots, objects, and atmosphere.
+        const systemPrompt = `Analyze these images of a party venue for a murder mystery. 
+            
+            CRITICAL REQUIREMENTS:
+            1. Identify EVERY distinct object that could hide a clue (furniture, decorations, appliances, etc.)
+            2. For each object, describe SPECIFIC hiding locations (not just "bookshelf" but "bookshelf, behind books on middle shelf")
+            3. Categorize by difficulty (easy = obvious spots, hard = clever hiding places)
+            4. Suggest specific clue types that fit each spot (e.g., "small note", "key", "folded paper")
 
 Return your response as a valid JSON object with this structure:
 {
@@ -82,6 +88,11 @@ Return your response as a valid JSON object with this structure:
         }
 
         let aiResponseContent = aiResult.choices[0].message.content
+
+        if (!aiResponseContent) {
+            throw new Error('OpenAI returned empty content')
+        }
+
         // Strip markdown code blocks if present
         if (aiResponseContent.includes('```json')) {
             aiResponseContent = aiResponseContent.replace(/```json\n|\n```/g, '')
