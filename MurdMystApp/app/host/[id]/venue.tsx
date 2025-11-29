@@ -92,30 +92,45 @@ export default function VenueAnalysis() {
         try {
             // 1. Upload images
             for (const image of images) {
-                if (!image.base64) continue;
-
                 const fileName = `venue-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
                 const filePath = `${id}/${fileName}`;
-                const fileData = decode(image.base64);
+
+                // Use fetch to get blob instead of base64 decode
+                const response = await fetch(image.uri);
+                const blob = await response.blob();
+
+                let bucket = 'venue_images';
 
                 const { error: uploadError } = await supabase.storage
-                    .from('venue_images')
-                    .upload(filePath, fileData, {
+                    .from(bucket)
+                    .upload(filePath, blob, {
                         contentType: 'image/jpeg',
                         upsert: false
                     });
 
                 if (uploadError) {
-                    console.error('Upload error:', uploadError);
-                    Alert.alert(
-                        'Upload Failed',
-                        `Could not upload image: ${uploadError.message}\n\nThis might be a permissions issue. Check that the venue_images bucket exists and is public.`
-                    );
-                    throw uploadError;
+                    console.error('Upload error (venue_images), trying portraits:', uploadError);
+                    // Fallback to portraits bucket (matching web app logic)
+                    bucket = 'portraits';
+                    const { error: retryError } = await supabase.storage
+                        .from(bucket)
+                        .upload(filePath, blob, {
+                            contentType: 'image/jpeg',
+                            upsert: false
+                        });
+
+                    if (retryError) {
+                        console.error('Upload failed for both buckets:', retryError);
+                        Alert.alert(
+                            'Upload Failed',
+                            `Could not upload image: ${uploadError.message}`
+                        );
+                        throw uploadError;
+                    }
                 }
 
                 const { data: { publicUrl } } = supabase.storage
-                    .from('venue_images')
+                    .from(bucket)
                     .getPublicUrl(filePath);
 
                 uploadedUrls.push(publicUrl);
