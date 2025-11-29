@@ -41,7 +41,10 @@ serve(async (req) => {
         ]
 
         imageUrls.forEach((url: string) => {
-            content.push({ type: 'image', image: url })
+            content.push({
+                type: 'image_url',
+                image_url: { url }
+            })
         })
 
         console.log('Calling OpenAI Vision API...')
