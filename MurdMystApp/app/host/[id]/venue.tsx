@@ -118,6 +118,7 @@ export default function VenueAnalysis() {
                     .getPublicUrl(filePath);
 
                 uploadedUrls.push(publicUrl);
+                console.log('Uploaded image URL:', publicUrl);
             }
 
             setAnalyzing(true);

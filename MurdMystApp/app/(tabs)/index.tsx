@@ -74,7 +74,6 @@ export default function Dashboard() {
       .from('parties')
       .insert([
         {
-          host_id: user.id,
           name: 'New Mystery Party',
           status: 'planning',
           host_pin: hostPin,
