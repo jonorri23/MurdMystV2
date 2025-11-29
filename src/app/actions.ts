@@ -126,7 +126,7 @@ export async function loginGuest(formData: FormData) {
     redirect(`/party/${partyId}/guest/${data.id}`)
 }
 
-export async function generateMystery(partyId: string) {
+export async function generateMystery(partyId: string, generatePortraits: boolean = true) {
     const { openai } = await import('@ai-sdk/openai')
     const { generateObject } = await import('ai')
     const { z } = await import('zod')
@@ -364,28 +364,30 @@ Make it dramatic, interactive, and perfectly tailored to this venue and theme!
 
         console.log(`Matched "${char.guestName}" → Guest "${guest.name}" (${guest.id})`);
 
-        // Generate portrait using dall-e-3
+        // Generate portrait using dall-e-3 (only if generatePortraits is true)
         let portraitUrl = null
-        try {
-            const OpenAI = (await import('openai')).default
-            const client = new OpenAI({
-                apiKey: process.env.OPENAI_API_KEY,
-            })
+        if (generatePortraits) {
+            try {
+                const OpenAI = (await import('openai')).default
+                const client = new OpenAI({
+                    apiKey: process.env.OPENAI_API_KEY,
+                })
 
-            const imagePrompt = `A digital painting of a murder mystery character: ${char.roleName}, ${char.roleDescription}. ${party.story_theme || 'Mystery theme'}. Style: Oil painting, mysterious, noir. High quality, detailed.`
+                const imagePrompt = `A digital painting of a murder mystery character: ${char.roleName}, ${char.roleDescription}. ${party.story_theme || 'Mystery theme'}. Style: Oil painting, mysterious, noir. High quality, detailed.`
 
-            const response = await client.images.generate({
-                model: 'dall-e-3',
-                prompt: imagePrompt,
-                n: 1,
-                size: '1024x1024',
-                quality: 'standard',
-            })
+                const response = await client.images.generate({
+                    model: 'dall-e-3',
+                    prompt: imagePrompt,
+                    n: 1,
+                    size: '1024x1024',
+                    quality: 'standard',
+                })
 
-            portraitUrl = response.data?.[0]?.url || null
-        } catch (error) {
-            console.error(`Failed to generate portrait for ${char.roleName}:`, error)
-            // Continue without portrait
+                portraitUrl = response.data?.[0]?.url || null
+            } catch (error) {
+                console.error(`Failed to generate portrait for ${char.roleName}:`, error)
+                // Continue without portrait
+            }
         }
 
         return {
@@ -847,48 +849,36 @@ export async function adjustStory(partyId: string, instruction: string, analysis
 export async function regenerateAllPortraits(partyId: string) {
     'use server'
 
-    const { data: guests } = await supabase
-        .from('guests')
-        .select('id')
-        .eq('party_id', partyId)
-
-    if (!guests) return
-
     const { data: characters } = await supabase
         .from('characters')
-        .select('*')
-        .in('guest_id', guests.map(g => g.id))
+        .select('id, name, role, backstory')
+        .in('guest_id', (await supabase.from('guests').select('id').eq('party_id', partyId)).data?.map(g => g.id) || [])
 
     if (!characters) return
 
-    const OpenAI = (await import('openai')).default
-    const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const { data: party } = await supabase
+        .from('parties')
+        .select('story_theme')
+        .eq('id', partyId)
+        .single()
 
+    const OpenAI = (await import('openai')).default
+    const client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+    })
+
+    // Process in parallel with limit
     await Promise.all(characters.map(async (char) => {
         try {
-            const response = await openaiClient.images.generate({
-                model: "dall-e-3",
-                prompt: `A digital painting of a murder mystery character: ${char.name}, ${char.role}. ${char.backstory.slice(0, 100)}... Style: Oil painting, mysterious, noir.`,
-                size: "1024x1024",
-                quality: "standard",
+            const imagePrompt = `A digital painting of a murder mystery character: ${char.name} as ${char.role}. ${party?.story_theme || 'Mystery theme'}. Style: Oil painting, mysterious, noir. High quality, detailed.`
+
+            const response = await client.images.generate({
+                model: 'dall-e-3',
+                prompt: imagePrompt,
                 n: 1,
-                response_format: "b64_json"
+                contentType: 'image/png',
+                upsert: true
             })
-
-            if (!response.data) throw new Error('No image data received')
-            const imageBase64 = response.data[0].b64_json
-            if (!imageBase64) throw new Error('No image data')
-
-            // Upload to Supabase Storage
-            const fileName = `${partyId}/${char.id}-${Date.now()}.png`
-            const buffer = Buffer.from(imageBase64, 'base64')
-
-            const { error: uploadError } = await supabase.storage
-                .from('portraits')
-                .upload(fileName, buffer, {
-                    contentType: 'image/png',
-                    upsert: true
-                })
 
             if (!uploadError) {
                 const { data: { publicUrl } } = supabase.storage
@@ -1104,4 +1094,157 @@ export async function analyzeVenue(formData: FormData) {
     revalidatePath(`/host/${partyId}/dashboard`)
 
     return object
+}
+
+export async function updateInAppClue(eventId: string, content: string, targetRoles: string[]) {
+    'use server'
+
+    // We need to convert targetRoles (names) to target_guest_ids
+    // First fetch the event to get party_id
+    const { data: event } = await supabase
+        .from('game_events')
+        .select('party_id')
+        .eq('id', eventId)
+        .single()
+
+    if (!event) throw new Error('Event not found')
+
+    let targetGuestIds: string[] | null = null
+
+    if (targetRoles && targetRoles.length > 0) {
+        // Fetch characters for this party to map roles to guest IDs
+        // This is a bit complex because we need to join guests and characters
+        // Simpler: Fetch all characters for party's guests
+        const { data: guests } = await supabase
+            .from('guests')
+            .select('id')
+            .eq('party_id', event.party_id)
+
+        if (guests) {
+            const guestIds = guests.map(g => g.id)
+            const { data: characters } = await supabase
+                .from('characters')
+                .select('guest_id, role')
+                .in('guest_id', guestIds)
+
+            if (characters) {
+                targetGuestIds = characters
+                    .filter(c => targetRoles.includes(c.role))
+                    .map(c => c.guest_id)
+            }
+        }
+    }
+
+    await supabase
+        .from('game_events')
+        .update({
+            content,
+            target_guest_ids: targetGuestIds
+        })
+        .eq('id', eventId)
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${event.party_id}/review`, 'page')
+}
+
+export async function deleteInAppClue(eventId: string) {
+    'use server'
+
+    const { data: event } = await supabase
+        .from('game_events')
+        .select('party_id')
+        .eq('id', eventId)
+        .single()
+
+    if (!event) throw new Error('Event not found')
+
+    await supabase
+        .from('game_events')
+        .delete()
+        .eq('id', eventId)
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${event.party_id}/review`, 'page')
+}
+
+export async function addInAppClue(partyId: string, content: string, targetRoles: string[]) {
+    'use server'
+
+    let targetGuestIds: string[] | null = null
+
+    if (targetRoles && targetRoles.length > 0) {
+        const { data: guests } = await supabase
+            .from('guests')
+            .select('id')
+            .eq('party_id', partyId)
+
+        if (guests) {
+            const guestIds = guests.map(g => g.id)
+            const { data: characters } = await supabase
+                .from('characters')
+                .select('guest_id, role')
+                .in('guest_id', guestIds)
+
+            if (characters) {
+                targetGuestIds = characters
+                    .filter(c => targetRoles.includes(c.role))
+                    .map(c => c.guest_id)
+            }
+        }
+    }
+
+    await supabase
+        .from('game_events')
+        .insert({
+            party_id: partyId,
+            event_type: 'clue',
+            content,
+            target_guest_ids: targetGuestIds,
+            trigger_time: null // Scheduled/Manual
+        })
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(`/host/${partyId}/review`, 'page')
+}
+
+export async function sendCharacterLink(guestId: string, phoneNumber: string) {
+    'use server'
+
+    // 1. Fetch guest and party info
+    const { data: guest, error: guestError } = await supabase
+        .from('guests')
+        .select('party_id, name')
+        .eq('id', guestId)
+        .single()
+
+    if (guestError || !guest) {
+        throw new Error('Guest not found')
+    }
+
+    // 2. Construct the character link
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const characterLink = `${appUrl}/party/${guest.party_id}/guest/${guestId}`
+
+    // 3. Send via Twilio
+    const accountSid = process.env.TWILIO_ACCOUNT_SID
+    const authToken = process.env.TWILIO_AUTH_TOKEN
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER
+
+    if (!accountSid || !authToken || !fromNumber) {
+        throw new Error('Twilio credentials not configured. Please add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER to your .env file.')
+    }
+
+    try {
+        const twilio = (await import('twilio')).default
+        const client = twilio(accountSid, authToken)
+
+        await client.messages.create({
+            body: `Welcome to the murder mystery! Access your character here: ${characterLink}`,
+            from: fromNumber,
+            to: phoneNumber
+        })
+    } catch (error: any) {
+        console.error('Twilio error:', error)
+        throw new Error(error.message || 'Failed to send SMS')
+    }
 }

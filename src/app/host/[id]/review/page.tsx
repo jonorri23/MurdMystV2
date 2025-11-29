@@ -106,6 +106,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
                 <ReviewContent
                     party={party}
                     characters={characters || []}
+                    inAppClues={inAppClues || []}
                     onRefresh={async () => {
                         'use server'
                         await refreshPage(id)

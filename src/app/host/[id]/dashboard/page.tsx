@@ -5,6 +5,8 @@ import { NotificationListener } from '@/components/NotificationListener'
 import { PhaseControl } from '@/components/PhaseControl'
 import { ShareLink } from '@/components/ShareLink'
 import { VenueUpload } from '@/components/VenueUpload'
+import { GenerateMysteryForm } from '@/components/GenerateMysteryForm'
+import { SendCharacterLink } from '@/components/SendCharacterLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -204,18 +206,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
 
                         <div className="border-t border-slate-800 pt-6">
                             <p className="text-slate-400 text-sm mb-4">Ready to generate the mystery?</p>
-                            <form action={async () => {
-                                'use server'
-                                const { generateMystery } = await import('@/app/actions')
-                                await generateMystery(id)
-                            }}>
-                                <button
-                                    disabled={!guests || guests.length < 3}
-                                    className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {guests && guests.length < 3 ? `Need ${3 - guests.length} more guests` : 'Generate Mystery'}
-                                </button>
-                            </form>
+                            <GenerateMysteryForm partyId={id} guestCount={guests?.length || 0} />
                         </div>
                     </div>
                 </div>
@@ -256,6 +247,12 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Game Link Sharing */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                        <h2 className="text-xl font-semibold mb-4 text-purple-400">Share Game Link</h2>
+                        <ShareLink gameId={party.id} />
                     </div>
 
                     {/* Physical Clue Checklist */}
@@ -372,6 +369,7 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-xs text-slate-500">{guest.name}</span>
                                                 <code className="text-xs bg-slate-950 px-2 py-0.5 rounded text-purple-400 font-mono">PIN: {guest.access_pin}</code>
+                                                <SendCharacterLink guestId={guest.id} characterName={char.name} />
                                             </div>
                                         </div>
                                         {isMurderer && (

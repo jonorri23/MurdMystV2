@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform, FlatList } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform, FlatList, Share } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
-import { Users, MessageSquare, Bell, Clock, Send, ChevronRight } from 'lucide-react-native';
+import { Users, MessageSquare, Bell, Clock, Send, ChevronRight, Copy, Phone } from 'lucide-react-native';
+import { PhaseControl } from '../../../components/PhaseControl';
+import * as Clipboard from 'expo-clipboard';
+import * as SMS from 'expo-sms';
 
-const TABS = ['Overview', 'Messages', 'Events'];
+import { ClueControl } from '../../../components/ClueControl';
+
+const TABS = ['Overview', 'Messages', 'Clues', 'Events'];
 
 export default function GameDashboard() {
     const { id } = useLocalSearchParams();
@@ -106,6 +111,38 @@ export default function GameDashboard() {
         );
     };
 
+    const copyGameLink = async () => {
+        const gameUrl = `https://murdmyst.vercel.app/host/${id}/login`;
+        await Clipboard.setStringAsync(gameUrl);
+        Alert.alert('Copied!', 'Game link copied to clipboard');
+    };
+
+    const sendCharacterSMS = async (guestId: string, characterName: string) => {
+        const isAvailable = await SMS.isAvailableAsync();
+        if (!isAvailable) {
+            Alert.alert('SMS Not Available', 'SMS is not available on this device');
+            return;
+        }
+
+        Alert.prompt(
+            'Send Character Link',
+            `Enter phone number to send link for ${characterName}`,
+            async (phoneNumber) => {
+                if (!phoneNumber) return;
+
+                const characterLink = `https://murdmyst.vercel.app/party/${id}/guest/${guestId}`;
+                const message = `Welcome to the murder mystery! Access your character here: ${characterLink}`;
+
+                try {
+                    await SMS.sendSMSAsync([phoneNumber], message);
+                } catch (error) {
+                    Alert.alert('Error', 'Failed to send SMS');
+                }
+            },
+            'plain-text'
+        );
+    };
+
     if (loading) {
         return (
             <SafeAreaView className="flex-1 justify-center items-center bg-slate-50 dark:bg-slate-950">
@@ -130,17 +167,19 @@ export default function GameDashboard() {
 
             {/* Tabs */}
             <View className="flex-row px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                {TABS.map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        onPress={() => setActiveTab(tab)}
-                        className={`mr-4 px-4 py-2 rounded-full ${activeTab === tab ? 'bg-indigo-100 dark:bg-indigo-900/50' : ''}`}
-                    >
-                        <Text className={`font-medium ${activeTab === tab ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
-                            {tab}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {TABS.map(tab => (
+                        <TouchableOpacity
+                            key={tab}
+                            onPress={() => setActiveTab(tab)}
+                            className={`mr-4 px-4 py-2 rounded-full ${activeTab === tab ? 'bg-indigo-100 dark:bg-indigo-900/50' : ''}`}
+                        >
+                            <Text className={`font-medium ${activeTab === tab ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-400'}`}>
+                                {tab}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {activeTab === 'Overview' && (
@@ -152,17 +191,47 @@ export default function GameDashboard() {
                         </Text>
                     </View>
 
+                    <View className="mb-8">
+                        <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Phase Controls</Text>
+                        <PhaseControl
+                            partyId={id as string}
+                            victimName={(party?.victim as any)?.name || 'The Victim'}
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={copyGameLink}
+                        className="bg-purple-600 p-4 rounded-xl flex-row items-center justify-center mb-8"
+                    >
+                        <Copy size={20} color="white" />
+                        <Text className="text-white font-bold text-base ml-2">Copy Game Link</Text>
+                    </TouchableOpacity>
+
                     <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Guests ({guests.length})</Text>
                     <View className="space-y-3 pb-24">
-                        {guests.map(guest => (
-                            <View key={guest.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex-row items-center justify-between">
-                                <View>
-                                    <Text className="font-bold text-slate-900 dark:text-white">{guest.name}</Text>
-                                    <Text className="text-indigo-500 text-sm">{guest.characters?.[0]?.name}</Text>
+                        {guests.map(guest => {
+                            const character = guest.characters?.[0];
+                            return (
+                                <View key={guest.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                                    <View className="flex-row items-center justify-between mb-2">
+                                        <View className="flex-1">
+                                            <Text className="font-bold text-slate-900 dark:text-white">{guest.name}</Text>
+                                            <Text className="text-indigo-500 text-sm">{character?.name}</Text>
+                                        </View>
+                                        <View className={`w-3 h-3 rounded-full ${guest.is_online ? 'bg-green-500' : 'bg-slate-300'}`} />
+                                    </View>
+                                    {character && (
+                                        <TouchableOpacity
+                                            onPress={() => sendCharacterSMS(guest.id, character.name)}
+                                            className="bg-green-600 p-2 rounded-lg flex-row items-center justify-center mt-2"
+                                        >
+                                            <Phone size={16} color="white" />
+                                            <Text className="text-white font-medium text-sm ml-2">Send Character Link</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                <View className={`w-3 h-3 rounded-full ${guest.is_online ? 'bg-green-500' : 'bg-slate-300'}`} />
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 </ScrollView>
             )}
@@ -181,8 +250,8 @@ export default function GameDashboard() {
                         renderItem={({ item }) => (
                             <View className={`mb-4 ${item.sender_type === 'host' ? 'items-end' : 'items-start'}`}>
                                 <View className={`max-w-[80%] p-3 rounded-2xl ${item.sender_type === 'host'
-                                        ? 'bg-indigo-600 rounded-tr-none'
-                                        : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
+                                    ? 'bg-indigo-600 rounded-tr-none'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none'
                                     }`}>
                                     {item.sender_type !== 'host' && (
                                         <Text className="text-xs text-slate-500 mb-1">{item.sender_id}</Text>
@@ -210,6 +279,15 @@ export default function GameDashboard() {
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
+            )}
+
+            {activeTab === 'Clues' && (
+                <ScrollView className="flex-1 px-6 pt-6">
+                    <View className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 mb-6">
+                        <Text className="text-xl font-bold text-slate-900 dark:text-white mb-4">Send Clue</Text>
+                        <ClueControl partyId={id as string} guests={guests} />
+                    </View>
+                </ScrollView>
             )}
 
             {activeTab === 'Events' && (

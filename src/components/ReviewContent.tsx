@@ -2,23 +2,28 @@
 
 import { EditableCharacter } from '@/components/EditableCharacter'
 import { EditableClue } from '@/components/EditableClue'
-import { adjustStory, regenerateAllPortraits } from '@/app/actions'
+import { EditableGameEvent } from '@/components/EditableGameEvent'
+import { adjustStory, regenerateAllPortraits, addInAppClue } from '@/app/actions'
 import { useState } from 'react'
 import { WinningPath } from '@/components/WinningPath'
 
 export function ReviewContent({
     party,
     characters,
+    inAppClues,
     onRefresh
 }: {
     party: any
     characters: any[]
+    inAppClues: any[]
     onRefresh: () => void
 }) {
     const [isCheckingStory, setIsCheckingStory] = useState(false)
     const [storyCheckResult, setStoryCheckResult] = useState<string | null>(null)
     const [isAdjusting, setIsAdjusting] = useState(false)
     const [adjustmentPrompt, setAdjustmentPrompt] = useState('')
+    const [newClueContent, setNewClueContent] = useState('')
+    const [isAddingClue, setIsAddingClue] = useState(false)
 
     const checkStoryCoherence = async () => {
         setIsCheckingStory(true)
@@ -189,6 +194,50 @@ export function ReviewContent({
                     </div>
                 </div>
             )}
+
+            {/* In-App Clues - Editable */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-blue-400 mb-4 flex items-center gap-2">
+                    <span>📱</span> In-App Clues & Events
+                </h2>
+                <p className="text-slate-400 text-sm mb-6">
+                    These clues appear on guests' phones during the game. You can trigger them manually or schedule them.
+                </p>
+
+                <div className="space-y-3 mb-6">
+                    {inAppClues && inAppClues.map((clue: any) => (
+                        <EditableGameEvent
+                            key={clue.id}
+                            event={clue}
+                            characters={characters}
+                            onUpdate={onRefresh}
+                        />
+                    ))}
+                    {(!inAppClues || inAppClues.length === 0) && (
+                        <p className="text-slate-500 italic">No in-app clues generated yet.</p>
+                    )}
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-slate-400 uppercase mb-2">Add New Event</h3>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={newClueContent}
+                            onChange={(e) => setNewClueContent(e.target.value)}
+                            placeholder="Enter clue content..."
+                            className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                        />
+                        <button
+                            onClick={handleAddClue}
+                            disabled={isAddingClue || !newClueContent.trim()}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 text-white rounded font-medium text-sm whitespace-nowrap"
+                        >
+                            {isAddingClue ? 'Adding...' : 'Add Event'}
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {/* Character Roles - Editable */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">

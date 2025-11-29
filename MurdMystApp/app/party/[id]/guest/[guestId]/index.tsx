@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, Alert } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { View, Text, ScrollView, Image, Alert, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, Stack, Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Scroll, Key } from 'lucide-react-native';
-import { supabase } from '../../../../lib/supabase';
+import { User, Scroll, Key, MessageSquare } from 'lucide-react-native';
+import { supabase } from '../../../../../lib/supabase';
 
 export default function GuestDashboard() {
     const { id: partyId, guestId } = useLocalSearchParams();
@@ -134,6 +134,13 @@ export default function GuestDashboard() {
                         </View>
                     </View>
                 )}
+
+                <Link href={`/party/${partyId}/guest/${guestId}/chat`} asChild>
+                    <TouchableOpacity className="bg-indigo-600 p-4 rounded-xl flex-row items-center justify-center mb-8">
+                        <MessageSquare size={24} color="white" />
+                        <Text className="text-white font-bold text-lg ml-2">Open Party Chat</Text>
+                    </TouchableOpacity>
+                </Link>
 
                 <View className="mb-12">
                     <Text className="text-xl font-bold text-white mb-4">Clues & Events</Text>

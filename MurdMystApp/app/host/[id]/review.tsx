@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { Button } from '../../../components/ui/Button';
-import { ChevronRight, User, MapPin, Key, BookOpen, AlertTriangle, CheckCircle, Edit2, Save } from 'lucide-react-native';
-import { Input } from '../../../components/ui/Input';
+import { AlertTriangle } from 'lucide-react-native';
+import { EditableCharacter } from '../../../components/EditableCharacter';
+import { EditableClue } from '../../../components/EditableClue';
+import { EditableGameEvent } from '../../../components/EditableGameEvent';
 
 const TABS = ['Overview', 'Characters', 'Clues', 'Solution'];
 
@@ -14,12 +16,9 @@ export default function ReviewMystery() {
     const [activeTab, setActiveTab] = useState('Overview');
     const [party, setParty] = useState<any>(null);
     const [characters, setCharacters] = useState<any[]>([]);
+    const [gameEvents, setGameEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [starting, setStarting] = useState(false);
-    const [editingItem, setEditingItem] = useState<any>(null);
-    const [editValue, setEditValue] = useState('');
-    const [editField, setEditField] = useState('');
-    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -46,13 +45,22 @@ export default function ReviewMystery() {
 
         if (guests && guests.length > 0) {
             const guestIds = guests.map(g => g.id);
-            const { data: chars, error: charsError } = await supabase
+            const { data: chars } = await supabase
                 .from('characters')
                 .select('*, guests(name, access_pin)')
                 .in('guest_id', guestIds);
 
             if (chars) setCharacters(chars);
         }
+
+        const { data: events } = await supabase
+            .from('game_events')
+            .select('*')
+            .eq('party_id', id)
+            .eq('event_type', 'clue')
+            .order('trigger_time', { ascending: true });
+
+        if (events) setGameEvents(events);
 
         setLoading(false);
     }
@@ -76,7 +84,7 @@ export default function ReviewMystery() {
                             Alert.alert('Error', error.message);
                             setStarting(false);
                         } else {
-                            router.replace(`/host/${id}/dashboard`);
+                            router.replace(`/host/${id}/game`);
                         }
                     }
                 }
@@ -84,50 +92,17 @@ export default function ReviewMystery() {
         );
     };
 
-    const handleEdit = (item: any, field: string, value: string) => {
-        setEditingItem(item);
-        setEditField(field);
-        setEditValue(value);
-    };
+    const handleClueSave = async (updatedClue: any, index: number) => {
+        const newClues = [...party.physical_clues];
+        newClues[index] = updatedClue;
 
-    const saveEdit = async () => {
-        if (!editingItem || !editField) return;
-        setSaving(true);
+        const { error } = await supabase
+            .from('parties')
+            .update({ physical_clues: newClues })
+            .eq('id', id);
 
-        try {
-            let table = 'characters';
-            if (activeTab === 'Clues') table = 'parties'; // Special case for JSON array update
-
-            if (table === 'characters') {
-                const { error } = await supabase
-                    .from('characters')
-                    .update({ [editField]: editValue })
-                    .eq('id', editingItem.id);
-
-                if (error) throw error;
-
-                // Update local state
-                setCharacters(chars => chars.map(c => c.id === editingItem.id ? { ...c, [editField]: editValue } : c));
-            } else if (activeTab === 'Clues') {
-                // For clues, we need to update the entire JSON array in parties table
-                const newClues = [...party.physical_clues];
-                newClues[editingItem.index] = { ...newClues[editingItem.index], [editField]: editValue };
-
-                const { error } = await supabase
-                    .from('parties')
-                    .update({ physical_clues: newClues })
-                    .eq('id', id);
-
-                if (error) throw error;
-                setParty(p => ({ ...p, physical_clues: newClues }));
-            }
-
-            setEditingItem(null);
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
-        } finally {
-            setSaving(false);
-        }
+        if (error) throw error;
+        setParty((p: any) => ({ ...p, physical_clues: newClues }));
     };
 
     if (loading) {
@@ -187,98 +162,57 @@ export default function ReviewMystery() {
                                 <Text className="text-slate-700 dark:text-slate-300 mt-2">{party.victim?.backstory}</Text>
                             </View>
                         </View>
+
+                        <Button
+                            title="Start Game"
+                            onPress={startGame}
+                            loading={starting}
+                            className="mt-4"
+                        />
                     </View>
                 )}
 
                 {activeTab === 'Characters' && (
                     <View className="space-y-4 pb-24">
                         {characters.map((char) => (
-                            <View key={char.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                {char.portrait_url && (
-                                    <Image
-                                        source={{ uri: char.portrait_url }}
-                                        className="w-full h-48 bg-slate-200 dark:bg-slate-800"
-                                        resizeMode="cover"
-                                    />
-                                )}
-                                <View className="p-4">
-                                    <View className="flex-row justify-between items-start mb-2">
-                                        <View>
-                                            <Text className="text-xl font-bold text-slate-900 dark:text-white">{char.name}</Text>
-                                            <Text className="text-indigo-500 font-medium">{char.role}</Text>
-                                        </View>
-                                        {char.secret_objective?.includes('MURDERER') && (
-                                            <View className="bg-red-100 px-2 py-1 rounded">
-                                                <Text className="text-red-700 text-xs font-bold">KILLER</Text>
-                                            </View>
-                                        )}
-                                    </View>
-
-                                    <View className="flex-row items-center justify-between mb-3">
-                                        <Text className="text-slate-500 text-xs">Played by: {char.guests?.name}</Text>
-                                        <View className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded flex-row items-center gap-1">
-                                            <Key size={10} color="#64748b" />
-                                            <Text className="text-slate-600 dark:text-slate-400 text-xs font-mono font-bold">PIN: {char.guests?.access_pin}</Text>
-                                        </View>
-                                    </View>
-
-                                    <View className="flex-row items-start gap-2 mb-3">
-                                        <Text className="text-slate-700 dark:text-slate-300 flex-1" numberOfLines={3}>{char.backstory}</Text>
-                                        <TouchableOpacity onPress={() => handleEdit(char, 'backstory', char.backstory)}>
-                                            <Edit2 size={16} color="#6366f1" />
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    <View className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">
-                                        <Text className="text-xs font-bold text-slate-500 uppercase mb-1">Secret Objective</Text>
-                                        <Text className="text-slate-700 dark:text-slate-300 text-sm">{char.secret_objective}</Text>
-                                    </View>
-                                </View>
-                            </View>
+                            <EditableCharacter
+                                key={char.id}
+                                character={char}
+                                onUpdate={fetchData}
+                            />
                         ))}
                     </View>
                 )}
 
                 {activeTab === 'Clues' && (
                     <View className="space-y-4 pb-24">
+                        <Text className="text-xl font-bold text-slate-900 dark:text-white mt-4 mb-2">Physical Clues</Text>
                         <Text className="text-slate-500 dark:text-slate-400 mb-2">
                             Hide these clues around the venue before starting the game.
                         </Text>
                         {party.physical_clues?.map((clue: any, index: number) => (
-                            <View key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                                <View className="flex-row items-center gap-3 mb-3">
-                                    <View className="bg-orange-100 p-2 rounded-full">
-                                        <Key size={20} color="#f97316" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="font-bold text-slate-900 dark:text-white">{clue.description}</Text>
-                                        <Text className="text-orange-600 text-xs font-medium uppercase">{clue.timing}</Text>
-                                    </View>
-                                </View>
-
-                                <View className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg mb-3">
-                                    <Text className="text-xs font-bold text-slate-500 uppercase mb-1">Setup Instruction</Text>
-                                    <Text className="text-xs font-bold text-slate-500 uppercase mb-1">Setup Instruction</Text>
-                                    <View className="flex-row items-start gap-2">
-                                        <Text className="text-slate-700 dark:text-slate-300 flex-1">{clue.setupInstruction}</Text>
-                                        <TouchableOpacity onPress={() => handleEdit({ ...clue, index }, 'setupInstruction', clue.setupInstruction)}>
-                                            <Edit2 size={14} color="#6366f1" />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-
-                                <View className="border-l-4 border-slate-300 dark:border-slate-700 pl-3 py-1">
-                                    <Text className="text-slate-600 dark:text-slate-400 italic">"{clue.content}"</Text>
-                                </View>
-
-                                {clue.hasUnlockCode && (
-                                    <View className="mt-3 flex-row items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 rounded-lg">
-                                        <Text className="text-indigo-600 dark:text-indigo-400 font-bold">PIN Code:</Text>
-                                        <Text className="text-indigo-700 dark:text-indigo-300 font-mono">{clue.unlockCode}</Text>
-                                    </View>
-                                )}
-                            </View>
+                            <EditableClue
+                                key={index}
+                                clue={clue}
+                                index={index}
+                                onSave={handleClueSave}
+                            />
                         ))}
+
+                        <Text className="text-xl font-bold text-slate-900 dark:text-white mt-8 mb-2">In-App Clues</Text>
+                        <Text className="text-slate-500 dark:text-slate-400 mb-2">
+                            These clues will be sent to guests automatically or manually.
+                        </Text>
+                        {gameEvents.map((event) => (
+                            <EditableGameEvent
+                                key={event.id}
+                                event={event}
+                                onUpdate={fetchData}
+                            />
+                        ))}
+                        {gameEvents.length === 0 && (
+                            <Text className="text-slate-500 italic">No in-app clues generated.</Text>
+                        )}
                     </View>
                 )}
 
@@ -314,43 +248,6 @@ export default function ReviewMystery() {
                     </View>
                 )}
             </ScrollView>
-
-            {/* Edit Modal */}
-            <Modal
-                visible={!!editingItem}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setEditingItem(null)}
-            >
-                <View className="flex-1 bg-black/50 justify-center items-center p-4">
-                    <View className="bg-white dark:bg-slate-900 w-full max-w-md p-6 rounded-2xl">
-                        <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Edit Content</Text>
-
-                        <TextInput
-                            value={editValue}
-                            onChangeText={setEditValue}
-                            multiline
-                            className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl text-slate-900 dark:text-white min-h-[100px] mb-4"
-                            textAlignVertical="top"
-                        />
-
-                        <View className="flex-row gap-3">
-                            <Button
-                                title="Cancel"
-                                variant="outline"
-                                onPress={() => setEditingItem(null)}
-                                className="flex-1"
-                            />
-                            <Button
-                                title="Save"
-                                onPress={saveEdit}
-                                loading={saving}
-                                className="flex-1"
-                            />
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }
