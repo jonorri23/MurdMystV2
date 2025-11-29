@@ -81,7 +81,15 @@ Return your response as a valid JSON object with this structure:
             throw new Error('Invalid response from OpenAI')
         }
 
-        const analysis = JSON.parse(aiResult.choices[0].message.content)
+        let content = aiResult.choices[0].message.content
+        // Strip markdown code blocks if present
+        if (content.includes('```json')) {
+            content = content.replace(/```json\n|\n```/g, '')
+        } else if (content.includes('```')) {
+            content = content.replace(/```\n|\n```/g, '')
+        }
+
+        const analysis = JSON.parse(content)
         console.log('Analysis successful')
 
         const { data: party } = await supabase.from('parties').select('venue_images').eq('id', partyId).single()
