@@ -50,6 +50,42 @@ export default async function HostDashboard({ params }: { params: Promise<{ id: 
 
             {party.status === 'planning' ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {/* Party Settings Card */}
+                    <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 md:col-span-2 lg:col-span-3 mb-6">
+                        <h2 className="text-xl font-semibold mb-4 text-purple-400">Party Settings</h2>
+                        <form action={async (formData) => {
+                            'use server'
+                            const { updatePartyDetails } = await import('@/app/actions')
+                            await updatePartyDetails(formData)
+                        }} className="grid gap-4 md:grid-cols-2">
+                            <input type="hidden" name="partyId" value={id} />
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Party Name</label>
+                                <input
+                                    name="name" // updatePartyDetails needs to handle 'name' update if not already
+                                    defaultValue={party.name}
+                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Host PIN</label>
+                                <input
+                                    name="hostPin" // updatePartyDetails needs to handle 'hostPin' update
+                                    defaultValue={party.host_pin}
+                                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-600 font-mono"
+                                />
+                            </div>
+
+                            <div className="md:col-span-2 flex justify-end">
+                                <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md text-sm transition-colors">
+                                    Update Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                     {/* Guest Management Card */}
                     <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 md:col-span-2">
                         <h2 className="text-xl font-semibold mb-4">Guest Management ({guests?.length || 0})</h2>

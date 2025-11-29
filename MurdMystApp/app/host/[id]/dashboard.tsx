@@ -27,6 +27,7 @@ export default function PartyDashboard() {
     const [venueDescription, setVenueDescription] = useState('');
     const [duration, setDuration] = useState('60-90m');
     const [complexity, setComplexity] = useState('balanced');
+    const [generatePortraits, setGeneratePortraits] = useState(true);
     const [showSettings, setShowSettings] = useState(true);
 
     async function fetchPartyDetails() {
@@ -185,7 +186,10 @@ export default function PartyDashboard() {
                             await saveSettings();
 
                             const { data, error } = await supabase.functions.invoke('generate-mystery', {
-                                body: { partyId: id },
+                                body: {
+                                    partyId: id,
+                                    generatePortraits: generatePortraits
+                                },
                             });
 
                             if (error) throw error;

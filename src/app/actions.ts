@@ -4,12 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 
 export async function createParty(formData: FormData) {
-    const name = formData.get('name') as string
-    const hostPin = formData.get('hostPin') as string
-
-    if (!name || !hostPin) {
-        throw new Error('Name and Host PIN are required')
-    }
+    const name = (formData.get('name') as string) || `Mystery Party ${new Date().toLocaleDateString()}`
+    const hostPin = (formData.get('hostPin') as string) || Math.floor(1000 + Math.random() * 9000).toString()
 
     const { data, error } = await supabase
         .from('parties')

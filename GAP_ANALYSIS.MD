@@ -34,6 +34,7 @@ The Web App is a feature-rich, polished Next.js application with advanced AI int
 | **Guest Experience** | Character Reveal, **Chat/Messaging**, Clues, Phase Updates | Character Reveal, Clues (Read-only). **No Chat.** | **High** |
 | **Host Experience** | Full Creation Suite, **Editing & AI Tools**, Venue Analysis | Basic Dashboard, View-only Lists. **No Editing/AI Tools.** | **High** |
 | **Realtime** | Full Realtime Updates (Chat, Phases) | Basic Clue Updates | Medium |
+| **Parity Updates** | **Instant Party Creation** (Added), **Settings in Dashboard** (Added) | **Instant Party Creation** (Native), **DALL-E Toggle** (Added) | **Resolved** |
 
 ### Look and Feel (Gaps)
 - **Theme:** Uses default Tailwind colors. Lacks the specific `slate-950` / `purple-500` palette definition in config.

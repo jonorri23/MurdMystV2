@@ -15,11 +15,16 @@ export default function Home() {
                 </div>
 
                 <div className="grid gap-4">
-                    <Link href="/host/create" className="w-full">
-                        <div className="h-12 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md flex items-center justify-center font-medium transition-colors">
-                            Host a Party
-                        </div>
-                    </Link>
+                    <form action={async () => {
+                        'use server'
+                        const { createParty } = await import('./actions')
+                        const formData = new FormData()
+                        await createParty(formData)
+                    }} className="w-full">
+                        <button className="w-full h-12 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md flex items-center justify-center font-medium transition-colors">
+                            Host a Party (Instant)
+                        </button>
+                    </form>
 
                     <Link href="/join" className="w-full">
                         <div className="h-12 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-md flex items-center justify-center font-medium transition-colors border border-slate-700">
