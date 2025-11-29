@@ -125,6 +125,8 @@ export default function GameDashboard() {
         }
 
         const characterLink = `https://murdmyst.vercel.app/party/${id}/guest/${guestId}`;
+        // For Expo Go testing: exp://192.168.x.x:8081/--/party/${id}/guest/${guestId}
+        // For production: Universal link that redirects to app or App Store
         const message = `Welcome to the murder mystery! Access your character (${characterName}) here: ${characterLink}`;
 
         try {
