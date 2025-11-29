@@ -124,23 +124,14 @@ export default function GameDashboard() {
             return;
         }
 
-        Alert.prompt(
-            'Send Character Link',
-            `Enter phone number to send link for ${characterName}`,
-            async (phoneNumber) => {
-                if (!phoneNumber) return;
+        const characterLink = `https://murdmyst.vercel.app/party/${id}/guest/${guestId}`;
+        const message = `Welcome to the murder mystery! Access your character (${characterName}) here: ${characterLink}`;
 
-                const characterLink = `https://murdmyst.vercel.app/party/${id}/guest/${guestId}`;
-                const message = `Welcome to the murder mystery! Access your character here: ${characterLink}`;
-
-                try {
-                    await SMS.sendSMSAsync([phoneNumber], message);
-                } catch (error) {
-                    Alert.alert('Error', 'Failed to send SMS');
-                }
-            },
-            'plain-text'
-        );
+        try {
+            await SMS.sendSMSAsync([], message);
+        } catch (error) {
+            Alert.alert('Error', 'Failed to open SMS app');
+        }
     };
 
     if (loading) {

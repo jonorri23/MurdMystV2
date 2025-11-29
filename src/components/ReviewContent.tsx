@@ -78,6 +78,20 @@ export function ReviewContent({
         setIsAdjusting(false)
     }
 
+    const handleAddClue = async () => {
+        if (!newClueContent.trim()) return
+        setIsAddingClue(true)
+        try {
+            await addInAppClue(party.id, newClueContent, [])
+            setNewClueContent('')
+            onRefresh()
+        } catch (error) {
+            console.error('Failed to add clue', error)
+            alert('Failed to add clue')
+        }
+        setIsAddingClue(false)
+    }
+
     return (
         <div className="space-y-8">
             {/* Winning Path Graph */}
