@@ -94,13 +94,18 @@ serve(async (req) => {
         }
 
         const analysis = JSON.parse(aiResponseContent)
-        console.log('Analysis successful')
+        console.log('Analysis successful', JSON.stringify(analysis))
 
         const { data: party } = await supabase.from('parties').select('venue_images').eq('id', partyId).single()
         const currentImages = party?.venue_images || []
         const uniqueImages = [...new Set([...currentImages, ...imageUrls])]
 
-        const venueDescription = `A ${analysis.atmosphere} ${analysis.roomType}. Key features: ${analysis.keyObjects.map((o: any) => o.name).join(', ')}.`
+        const roomType = analysis.roomType || 'unknown room';
+        const atmosphere = analysis.atmosphere || 'mysterious atmosphere';
+        const keyObjects = Array.isArray(analysis.keyObjects) ? analysis.keyObjects : [];
+        const keyFeatures = keyObjects.map((o: any) => o.name || 'object').join(', ');
+
+        const venueDescription = `A ${atmosphere} ${roomType}. Key features: ${keyFeatures}.`
 
         const { error: updateError } = await supabase
             .from('parties')
