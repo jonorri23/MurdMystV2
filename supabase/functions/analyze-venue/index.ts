@@ -24,10 +24,7 @@ serve(async (req) => {
 
         const openaiKey = Deno.env.get('OPENAI_API_KEY')!
 
-        const content: any[] = [
-            {
-                type: 'text',
-                text: `Analyze these images of a party venue for a murder mystery. Return your response as a JSON object.
+        const systemPrompt = `Analyze these images of a party venue for a murder mystery.
             
             CRITICAL REQUIREMENTS:
             1. Identify EVERY distinct object that could hide a clue (furniture, decorations, appliances, etc.)
@@ -36,18 +33,22 @@ serve(async (req) => {
             4. Suggest what TYPE of clue fits each spot (paper clue, small object, weapon, etc.)
             5. Detect any existing props or themed items visible in images
             
-            Think like a mystery game designer - where would YOU hide clues in this space?`
-            }
+            Think like a mystery game designer - where would YOU hide clues in this space?
+            
+            IMPORTANT: Return your response as a valid JSON object.`
+
+        const userContent: any[] = [
+            { type: 'text', text: "Here are the venue images. Please analyze them according to the system instructions." }
         ]
 
         imageUrls.forEach((url: string) => {
-            content.push({
+            userContent.push({
                 type: 'image_url',
                 image_url: { url }
             })
         })
 
-        console.log('Calling OpenAI Vision API...')
+        console.log('Calling OpenAI Vision API with gpt-4o-mini...')
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
@@ -56,10 +57,14 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'gpt-4o',
-                messages: [{ role: 'user', content }],
+                model: 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                ],
                 response_format: { type: 'json_object' },
                 temperature: 0.7,
+                max_tokens: 2000,
             }),
         })
 
@@ -70,6 +75,7 @@ serve(async (req) => {
         }
 
         const aiResult = await response.json()
+        console.log('OpenAI Raw Response:', JSON.stringify(aiResult))
 
         if (aiResult.error) {
             console.error('OpenAI returned error:', aiResult.error)
@@ -77,13 +83,18 @@ serve(async (req) => {
         }
 
         if (!aiResult.choices?.[0]?.message) {
-            throw new Error('Invalid response from OpenAI')
+            throw new Error('Invalid response from OpenAI (no choices)')
         }
 
         let aiResponseContent = aiResult.choices[0].message.content
+        const finishReason = aiResult.choices[0].finish_reason
 
         if (!aiResponseContent) {
-            throw new Error('OpenAI returned empty content')
+            console.error('Empty content. Finish reason:', finishReason)
+            if (aiResult.choices[0].refusal) {
+                console.error('Refusal:', aiResult.choices[0].refusal)
+            }
+            throw new Error(`OpenAI returned empty content. Reason: ${finishReason}`)
         }
 
         // Strip markdown code blocks if present
@@ -93,7 +104,14 @@ serve(async (req) => {
             aiResponseContent = aiResponseContent.replace(/```\n|\n```/g, '')
         }
 
-        const analysis = JSON.parse(aiResponseContent)
+        let analysis;
+        try {
+            analysis = JSON.parse(aiResponseContent)
+        } catch (e) {
+            console.error('JSON Parse Error:', e)
+            console.error('Raw Content:', aiResponseContent)
+            throw new Error('Failed to parse OpenAI response as JSON')
+        }
         console.log('Analysis successful', JSON.stringify(analysis))
 
         const { data: party } = await supabase.from('parties').select('venue_images').eq('id', partyId).single()
