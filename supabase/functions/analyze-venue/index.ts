@@ -35,7 +35,20 @@ serve(async (req) => {
             
             Think like a mystery game designer - where would YOU hide clues in this space?
             
-            IMPORTANT: Return your response as a valid JSON object.`
+            IMPORTANT: Return your response as a valid JSON object with this EXACT structure:
+            {
+                "roomType": "string (e.g., living room, dining room)",
+                "atmosphere": "string (describe the mood/vibe)",
+                "keyObjects": [
+                    { "name": "string", "location": "string", "hidingPotential": "high|medium|low", "clueTypes": ["string"] }
+                ],
+                "hidingSpots": [
+                    { "object": "string", "specificLocation": "string", "description": "string", "difficulty": "easy|medium|hard", "suggestedClueTypes": ["string"] }
+                ],
+                "detectableProps": [
+                    { "item": "string", "potential": "string" }
+                ]
+            }`
 
         const userContent: any[] = [
             { type: 'text', text: "Here are the venue images. Please analyze them according to the system instructions." }
