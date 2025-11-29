@@ -59,6 +59,38 @@ export default function Dashboard() {
     fetchParties();
   };
 
+  const createInstantParty = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    const hostPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const { data, error } = await supabase
+      .from('parties')
+      .insert([
+        {
+          host_id: user.id,
+          name: 'New Mystery Party',
+          status: 'planning',
+          host_pin: hostPin,
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      Alert.alert('Error', error.message);
+      setLoading(false);
+    } else {
+      router.push(`/host/${data.id}/dashboard`);
+    }
+  };
+
   const logout = async () => {
     Alert.alert(
       'Logout',
@@ -88,11 +120,9 @@ export default function Dashboard() {
           My Parties
         </Text>
         <View className="flex-row gap-3">
-          <Link href="/host/create" asChild>
-            <TouchableOpacity className="bg-indigo-600 p-2 rounded-full">
-              <Plus color="white" size={24} />
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity onPress={createInstantParty} className="bg-indigo-600 p-2 rounded-full">
+            <Plus color="white" size={24} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={logout} className="p-2">
             <LogOut size={20} color="#ef4444" />
           </TouchableOpacity>
@@ -113,28 +143,31 @@ export default function Dashboard() {
               <Text className="text-slate-500 text-center">
                 No parties yet. Start hosting!
               </Text>
-              <Link href="/host/create" asChild>
-                <Button title="Create Party" />
-              </Link>
+              </Text>
+              <Button 
+                title={loading ? "Creating..." : "Create Party"} 
+                onPress={createInstantParty}
+                loading={loading}
+              />
             </View>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <Link href={`/host/${item.id}/dashboard`} asChild>
-            <TouchableOpacity className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
-              <View>
-                <Text className="text-lg font-bold text-slate-900 dark:text-white">
-                  {item.name}
-                </Text>
-                <Text className="text-slate-500 text-sm">
-                  {item.status.toUpperCase()} • {new Date(item.created_at).toLocaleDateString()}
-                </Text>
-              </View>
-              <ChevronRight size={20} color="#94a3b8" />
-            </TouchableOpacity>
-          </Link>
-        )}
+  ) : null
+}
+renderItem = {({ item }) => (
+  <Link href={`/host/${item.id}/dashboard`} asChild>
+    <TouchableOpacity className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex-row justify-between items-center">
+      <View>
+        <Text className="text-lg font-bold text-slate-900 dark:text-white">
+          {item.name}
+        </Text>
+        <Text className="text-slate-500 text-sm">
+          {item.status.toUpperCase()} • {new Date(item.created_at).toLocaleDateString()}
+        </Text>
+      </View>
+      <ChevronRight size={20} color="#94a3b8" />
+    </TouchableOpacity>
+  </Link>
+)}
       />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }

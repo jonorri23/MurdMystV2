@@ -24,6 +24,7 @@ export default function PartyDashboard() {
 
     // Party Settings State
     const [theme, setTheme] = useState('');
+    const [venueDescription, setVenueDescription] = useState('');
     const [duration, setDuration] = useState('60-90m');
     const [complexity, setComplexity] = useState('balanced');
     const [showSettings, setShowSettings] = useState(false);
@@ -42,6 +43,7 @@ export default function PartyDashboard() {
 
         setParty(partyData);
         setTheme(partyData.story_theme || '');
+        setVenueDescription(partyData.setting_description || '');
         setDuration(partyData.target_duration || '60-90m');
         setComplexity(partyData.complexity || 'balanced');
 
@@ -152,7 +154,9 @@ export default function PartyDashboard() {
         const { error } = await supabase
             .from('parties')
             .update({
+                name: party.name,
                 story_theme: theme,
+                setting_description: venueDescription,
                 target_duration: duration,
                 complexity: complexity
             })
@@ -287,10 +291,25 @@ export default function PartyDashboard() {
                         {showSettings ? (
                             <View className="space-y-4">
                                 <Input
+                                    label="Party Name"
+                                    value={party.name}
+                                    onChangeText={(text) => setParty({ ...party, name: text })}
+                                />
+
+                                <Input
                                     label="Story Theme"
                                     placeholder="e.g. 1920s Gatsby, Cyberpunk..."
                                     value={theme}
                                     onChangeText={setTheme}
+                                />
+
+                                <Input
+                                    label="Available Props / Venue Details"
+                                    placeholder="Describe the room and available items..."
+                                    value={venueDescription}
+                                    onChangeText={setVenueDescription}
+                                    multiline
+                                    numberOfLines={3}
                                 />
 
                                 <View>
